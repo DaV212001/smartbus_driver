@@ -34,20 +34,26 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   List<PersistentBottomNavBarItem> _navBarsItems(BuildContext context) {
     return [
       PersistentBottomNavBarItem(
-        icon: const Icon(LucideIcons.map),
-        title: 'bottom_nav_routes'.tr,
+        icon: const Icon(LucideIcons.home),
+        title: 'Home',
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),
       ),
       PersistentBottomNavBarItem(
-        icon: const Icon(LucideIcons.qrCode),
-        title: 'bottom_nav_ticket'.tr,
+        icon: const Icon(LucideIcons.list),
+        title: 'Passengers',
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),
       ),
       PersistentBottomNavBarItem(
-        icon: const Icon(LucideIcons.wallet),
-        title: 'bottom_nav_wallet'.tr,
+        icon: const Icon(LucideIcons.qrCode, color: Colors.white),
+        title: 'Scan',
+        activeColorPrimary: Theme.of(context).primaryColor,
+        inactiveColorPrimary: const Color(0xFF64748B),
+      ),
+      PersistentBottomNavBarItem(
+        icon: const Icon(LucideIcons.gauge),
+        title: 'Analytics',
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),
       ),
@@ -93,7 +99,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
       //   curve: Curves.ease,
       //   duration: Duration(milliseconds: 200),
       // ),
-      navBarStyle: NavBarStyle.style6, // Choose the nav bar style!
+      navBarStyle: NavBarStyle.style15, // Choose the nav bar style!
     );
   }
 }

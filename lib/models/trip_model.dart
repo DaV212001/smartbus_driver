@@ -10,7 +10,7 @@ class TripModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final RouteModel route;
-  
+
   // Additional fields for analytics
   final int passengerCount;
   final bool isPeakLoad;
@@ -70,7 +70,9 @@ class TripModel {
       driverId: json['driverId'],
       busIdentifier: json['busIdentifier'],
       status: json['status'],
-      startedAt: json['startedAt'] != null ? DateTime.parse(json['startedAt']) : null,
+      startedAt: json['startedAt'] != null
+          ? DateTime.parse(json['startedAt'])
+          : null,
       endedAt: json['endedAt'] != null ? DateTime.parse(json['endedAt']) : null,
       scheduledFor: DateTime.parse(json['scheduledFor']),
       createdAt: DateTime.parse(json['createdAt']),
@@ -104,8 +106,10 @@ class TripModel {
     // 1. Group trips by calendar date (YYYY-MM-DD)
     final Map<String, List<TripModel>> tripsByDate = {};
     for (var trip in trips) {
-      final date = trip.scheduledFor;
-      final dateKey = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      // Use actual completion time for grouping if available, otherwise scheduled time
+      final date = (trip.endedAt ?? trip.scheduledFor).toLocal();
+      final dateKey =
+          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
       tripsByDate.putIfAbsent(dateKey, () => []).add(trip);
     }
 
@@ -176,7 +180,11 @@ class TripModel {
       endedAt: DateTime.now().subtract(const Duration(hours: 5, minutes: 15)),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r2', routeNumber: '34', name: 'Mexico ↔ Megenagna'),
+      route: RouteModel(
+        id: 'r2',
+        routeNumber: '34',
+        name: 'Mexico ↔ Megenagna',
+      ),
       passengerCount: 26, // Dynamic Peak Load for today
     ),
     TripModel(
@@ -190,7 +198,11 @@ class TripModel {
       endedAt: DateTime.now().subtract(const Duration(hours: 7, minutes: 15)),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r2', routeNumber: '34', name: 'Megenagna ↔ Mexico'),
+      route: RouteModel(
+        id: 'r2',
+        routeNumber: '34',
+        name: 'Megenagna ↔ Mexico',
+      ),
       passengerCount: 15,
     ),
 
@@ -203,7 +215,9 @@ class TripModel {
       status: 'COMPLETED',
       scheduledFor: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
       startedAt: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-      endedAt: DateTime.now().subtract(const Duration(days: 1, hours: 1, minutes: 10)),
+      endedAt: DateTime.now().subtract(
+        const Duration(days: 1, hours: 1, minutes: 10),
+      ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       route: RouteModel(id: 'r1', routeNumber: '12', name: 'Piazza ↔ Bole'),
@@ -217,7 +231,9 @@ class TripModel {
       status: 'COMPLETED',
       scheduledFor: DateTime.now().subtract(const Duration(days: 1, hours: 4)),
       startedAt: DateTime.now().subtract(const Duration(days: 1, hours: 4)),
-      endedAt: DateTime.now().subtract(const Duration(days: 1, hours: 3, minutes: 15)),
+      endedAt: DateTime.now().subtract(
+        const Duration(days: 1, hours: 3, minutes: 15),
+      ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       route: RouteModel(id: 'r1', routeNumber: '12', name: 'Bole ↔ Piazza'),
@@ -231,10 +247,16 @@ class TripModel {
       status: 'COMPLETED',
       scheduledFor: DateTime.now().subtract(const Duration(days: 1, hours: 6)),
       startedAt: DateTime.now().subtract(const Duration(days: 1, hours: 6)),
-      endedAt: DateTime.now().subtract(const Duration(days: 1, hours: 5, minutes: 15)),
+      endedAt: DateTime.now().subtract(
+        const Duration(days: 1, hours: 5, minutes: 15),
+      ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r2', routeNumber: '34', name: 'Mexico ↔ Megenagna'),
+      route: RouteModel(
+        id: 'r2',
+        routeNumber: '34',
+        name: 'Mexico ↔ Megenagna',
+      ),
       passengerCount: 20,
     ),
 
@@ -247,7 +269,9 @@ class TripModel {
       status: 'COMPLETED',
       scheduledFor: DateTime.now().subtract(const Duration(days: 2, hours: 2)),
       startedAt: DateTime.now().subtract(const Duration(days: 2, hours: 2)),
-      endedAt: DateTime.now().subtract(const Duration(days: 2, hours: 1, minutes: 10)),
+      endedAt: DateTime.now().subtract(
+        const Duration(days: 2, hours: 1, minutes: 10),
+      ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       route: RouteModel(id: 'r1', routeNumber: '12', name: 'Piazza ↔ Bole'),
@@ -261,7 +285,9 @@ class TripModel {
       status: 'COMPLETED',
       scheduledFor: DateTime.now().subtract(const Duration(days: 2, hours: 4)),
       startedAt: DateTime.now().subtract(const Duration(days: 2, hours: 4)),
-      endedAt: DateTime.now().subtract(const Duration(days: 2, hours: 3, minutes: 15)),
+      endedAt: DateTime.now().subtract(
+        const Duration(days: 2, hours: 3, minutes: 15),
+      ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       route: RouteModel(id: 'r1', routeNumber: '12', name: 'Bole ↔ Piazza'),
@@ -275,10 +301,16 @@ class TripModel {
       status: 'COMPLETED',
       scheduledFor: DateTime.now().subtract(const Duration(days: 2, hours: 6)),
       startedAt: DateTime.now().subtract(const Duration(days: 2, hours: 6)),
-      endedAt: DateTime.now().subtract(const Duration(days: 2, hours: 5, minutes: 15)),
+      endedAt: DateTime.now().subtract(
+        const Duration(days: 2, hours: 5, minutes: 15),
+      ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r2', routeNumber: '34', name: 'Mexico ↔ Megenagna'),
+      route: RouteModel(
+        id: 'r2',
+        routeNumber: '34',
+        name: 'Mexico ↔ Megenagna',
+      ),
       passengerCount: 18,
     ),
   ];
@@ -289,11 +321,7 @@ class RouteModel {
   final String routeNumber;
   final String name;
 
-  RouteModel({
-    required this.id,
-    required this.routeNumber,
-    required this.name,
-  });
+  RouteModel({required this.id, required this.routeNumber, required this.name});
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
     return RouteModel(
@@ -304,10 +332,6 @@ class RouteModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'routeNumber': routeNumber,
-      'name': name,
-    };
+    return {'id': id, 'routeNumber': routeNumber, 'name': name};
   }
 }

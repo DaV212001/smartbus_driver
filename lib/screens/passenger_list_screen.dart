@@ -1,5 +1,17 @@
+// Updated PassengerListScreen with GetX controller integration and cleaned architecture
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
+import '../constants/assets.dart';
+import '../controllers/passenger_list_controller.dart';
+// Framework & Template Imports
+import '../utils/api_call_status.dart';
+import '../utils/error_data.dart';
+import '../utils/templates/loaded_widgets_template.dart';
+import '../utils/wrappers/shimmer_wrapper.dart';
+import '../widgets/cards/error_card.dart';
+
+// UI Constants
 class AppColors {
   static const background = Color(0xFFFFFFFF);
   static const foreground = Color(0xFF0B2545);
@@ -8,206 +20,187 @@ class AppColors {
   static const primaryForeground = Color(0xFFFFFFFF);
   static const secondary = Color(0xFFF0F6FF);
   static const mutedForeground = Color(0xFF65707A);
-
   static const success = Color(0xFF22C55E);
   static const successBg = Color(0x1A22C55E);
-
   static const warning = Color(0xFFFF8A00);
   static const warningBg = Color(0x1AFF8A00);
-
   static const destructive = Color(0xFFE02424);
   static const destructiveBg = Color(0x1AE02424);
 }
 
-class PassengerListScreen extends StatefulWidget {
+enum PassengerStatus { valid, usedBefore, expired }
+
+class PassengerListScreen extends StatelessWidget {
   const PassengerListScreen({super.key});
 
   @override
-  State<PassengerListScreen> createState() => _PassengerListScreenState();
-}
-
-class _PassengerListScreenState extends State<PassengerListScreen> {
-  int _currentIndex = 1;
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(MediaQuery.of(context).padding.top + 60),
-        child: Container(
-          padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 20,
-            right: 20,
-            bottom: 12,
+    final controller = Get.put(PassengerListController());
+    return Obx(() {
+      final apiCallStatus = controller.apiCallStatus.value;
+      final errorData = controller.errorData.value;
+      final isLoading = apiCallStatus == ApiCallStatus.loading;
+
+      if (apiCallStatus == ApiCallStatus.error) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: _buildAppBar(controller),
+          body: Center(
+            child: ErrorCard(
+              errorData:
+                  errorData ??
+                  ErrorData(
+                    title: 'Error',
+                    body: 'An unexpected error occurred.',
+                    image: Assets.errorsUnknown,
+                    buttonText: 'Retry',
+                  ),
+              refresh: controller.loadScansData,
+            ),
           ),
-          color: AppColors.primary,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Passenger List',
-                    style: TextStyle(
-                      color: AppColors.primaryForeground,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Bus #104 • Route 42',
-                    style: TextStyle(
-                      color: AppColors.primaryForeground.withOpacity(0.9),
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+        );
+      }
+
+      if (apiCallStatus == ApiCallStatus.empty) {
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: _buildAppBar(controller),
+          body: Center(
+            child: ErrorCard(
+              errorData: ErrorData(
+                title: 'No Active Trip',
+                body:
+                    'Start a trip on the home screen to view ticket validation scans.',
+                image: Assets.empty,
+                buttonText: 'Refresh',
               ),
-              InkWell(
-                onTap: () {},
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryForeground.withOpacity(0.2),
-                    shape: BoxShape.circle,
+              refresh: controller.loadScansData,
+            ),
+          ),
+        );
+      }
+
+      final List<ScannedPassenger> displayList = isLoading
+          ? List.generate(
+              5,
+              (i) => ScannedPassenger(
+                id: '$i',
+                name: 'Placeholder Name',
+                time: '--:--',
+                result: 'VALID',
+                isPreviouslySeen: false,
+              ),
+            )
+          : controller.scans;
+
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: _buildAppBar(controller),
+        body: Column(
+          children: [
+            StatsBar(
+              total: controller.totalScans.value,
+              valid: controller.validScans.value,
+              issues: controller.issueScans.value,
+              isLoading: isLoading,
+            ),
+            Expanded(
+              child: LoadedListWidget(
+                apiCallStatus: apiCallStatus,
+                errorData: errorData,
+                list: displayList,
+                onReload: controller.loadScansData,
+                onEmpty: Center(
+                  child: ErrorCard(
+                    errorData: ErrorData(
+                      title: 'No Scans Recorded',
+                      body:
+                          'No passengers have been scanned during this trip yet.',
+                      image: Assets.empty,
+                      buttonText: 'Refresh',
+                    ),
+                    refresh: controller.loadScansData,
                   ),
-                  child: const Icon(
-                    Icons.filter_list,
-                    size: 18,
-                    color: Colors.white,
+                ),
+                loadingChild: ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: 5,
+                  itemBuilder: (c, i) =>
+                      PassengerItem(passenger: displayList[i], isLoading: true),
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 24),
+                  itemCount: displayList.length,
+                  itemBuilder: (c, i) => PassengerItem(
+                    passenger: displayList[i],
+                    isLoading: false,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-      body: Column(
-        children: [
-          const StatsBar(),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 24),
+      );
+    });
+  }
+
+  PreferredSizeWidget _buildAppBar(PassengerListController ctrl) {
+    final isLoading = ctrl.apiCallStatus.value == ApiCallStatus.loading;
+    String busInfo = '';
+    final activeTrip = ctrl.activeTrip.value;
+    if (!isLoading && activeTrip != null) {
+      busInfo =
+          'Bus #${activeTrip.busIdentifier} • Route ${activeTrip.route.routeNumber}';
+    }
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(80),
+      child: Container(
+        padding: const EdgeInsets.only(
+          top: 30,
+          left: 20,
+          right: 20,
+          bottom: 12,
+        ),
+        color: const Color(0xFF0B66B2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SectionTitle(title: 'Just Now'),
-                const PassengerItem(
-                  name: 'Hana Kebede',
-                  time: '10:42 AM',
-                  status: PassengerStatus.valid,
-                  avatarUrl: 'https://app.banani.co/avatar1.jpeg',
+                const Text(
+                  'Passenger List',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                const PassengerItem(
-                  name: 'Abebe Bikila',
-                  time: '10:41 AM',
-                  status: PassengerStatus.usedBefore,
-                  avatarUrl: 'https://app.banani.co/avatar2.jpg',
-                ),
-                const PassengerItem(
-                  name: 'Sara Tadesse',
-                  time: '10:40 AM',
-                  status: PassengerStatus.valid,
-                  avatarUrl: 'https://app.banani.co/avatar4.jpg',
-                ),
-                const SectionTitle(title: 'Earlier Today'),
-                const PassengerItem(
-                  name: 'Dawit Tesfaye',
-                  time: '10:35 AM',
-                  status: PassengerStatus.expired,
-                  initials: 'DT',
-                ),
-                const PassengerItem(
-                  name: 'Meron Haile',
-                  time: '10:32 AM',
-                  status: PassengerStatus.valid,
-                  avatarUrl: 'https://app.banani.co/avatar5.jpg',
-                ),
-                const PassengerItem(
-                  name: 'Yonas Alemu',
-                  time: '10:30 AM',
-                  status: PassengerStatus.valid,
-                  avatarUrl: 'https://app.banani.co/avatar6.jpg',
-                ),
-                const PassengerItem(
-                  name: 'Bethel Mulugeta',
-                  time: '10:28 AM',
-                  status: PassengerStatus.valid,
-                  initials: 'BM',
+                const Padding(padding: EdgeInsets.only(top: 2)),
+                Text(
+                  busInfo,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(top: 24),
-        child: SizedBox(
-          width: 56,
-          height: 56,
-          child: FloatingActionButton(
-            elevation: 4,
-            shape: const CircleBorder(
-              side: BorderSide(color: Colors.white, width: 4),
-            ),
-            backgroundColor: AppColors.primary,
-            onPressed: () {},
-            child: const Icon(
-              Icons.qr_code_scanner,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-        ),
-        child: BottomAppBar(
-          color: Colors.white,
-          elevation: 0,
-          height: 64,
-          padding: EdgeInsets.zero,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.home_outlined, 'Home'),
-              _buildNavItem(1, Icons.people, 'List'),
-              const SizedBox(width: 48),
-              _buildNavItem(2, Icons.notifications_none, 'Alerts'),
-              _buildNavItem(3, Icons.bar_chart, 'Stats'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isActive = _currentIndex == index;
-    final color = isActive ? AppColors.primary : AppColors.mutedForeground;
-
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _currentIndex = index),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: color,
+            InkWell(
+              onTap: ctrl.loadScansData,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.refresh, size: 18, color: Colors.white),
               ),
             ),
           ],
@@ -217,10 +210,19 @@ class _PassengerListScreenState extends State<PassengerListScreen> {
   }
 }
 
-enum PassengerStatus { valid, usedBefore, expired }
-
 class StatsBar extends StatelessWidget {
-  const StatsBar({super.key});
+  final int total;
+  final int valid;
+  final int issues;
+  final bool isLoading;
+
+  const StatsBar({
+    super.key,
+    required this.total,
+    required this.valid,
+    required this.issues,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -230,13 +232,28 @@ class StatsBar extends StatelessWidget {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildStatItem('Total', '48', AppColors.mutedForeground),
-          _buildStatItem('Valid', '45', AppColors.success),
-          _buildStatItem('Issues', '3', AppColors.warning),
-        ],
+      child: ShimmerWrapper(
+        isEnabled: isLoading,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildStatItem(
+              'Total',
+              isLoading ? '--' : total.toString(),
+              AppColors.mutedForeground,
+            ),
+            _buildStatItem(
+              'Valid',
+              isLoading ? '--' : valid.toString(),
+              AppColors.success,
+            ),
+            _buildStatItem(
+              'Issues',
+              isLoading ? '--' : issues.toString(),
+              AppColors.warning,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -254,7 +271,7 @@ class StatsBar extends StatelessWidget {
             letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 2),
+        const Padding(padding: EdgeInsets.only(top: 2)),
         Text(
           value,
           style: const TextStyle(
@@ -268,40 +285,14 @@ class StatsBar extends StatelessWidget {
   }
 }
 
-class SectionTitle extends StatelessWidget {
-  final String title;
-  const SectionTitle({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 8),
-      child: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: AppColors.mutedForeground,
-        ),
-      ),
-    );
-  }
-}
-
 class PassengerItem extends StatelessWidget {
-  final String name;
-  final String time;
-  final PassengerStatus status;
-  final String? avatarUrl;
-  final String? initials;
+  final ScannedPassenger passenger;
+  final bool isLoading;
 
   const PassengerItem({
     super.key,
-    required this.name,
-    required this.time,
-    required this.status,
-    this.avatarUrl,
-    this.initials,
+    required this.passenger,
+    required this.isLoading,
   });
 
   @override
@@ -310,130 +301,135 @@ class PassengerItem extends StatelessWidget {
       color: Colors.white,
       border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
     );
-
-    if (status == PassengerStatus.usedBefore) {
-      itemDecoration = const BoxDecoration(
-        color: Color(0xFFFFFBEB),
-        border: Border(
-          left: BorderSide(color: AppColors.warning, width: 4),
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
-        ),
-      );
-    } else if (status == PassengerStatus.expired) {
-      itemDecoration = const BoxDecoration(
-        color: Color(0xFFFEF2F2),
-        border: Border(
-          left: BorderSide(color: AppColors.destructive, width: 4),
-          bottom: BorderSide(color: AppColors.border, width: 0.5),
-        ),
-      );
+    PassengerStatus status = PassengerStatus.valid;
+    if (passenger.result == 'EXPIRED') {
+      status = PassengerStatus.expired;
+    } else if (passenger.result == 'ALREADY_USED' ||
+        passenger.isPreviouslySeen) {
+      status = PassengerStatus.usedBefore;
     }
+
+    if (!isLoading) {
+      if (status == PassengerStatus.usedBefore) {
+        itemDecoration = const BoxDecoration(
+          color: Color(0xFFFFFBEB),
+          border: Border(
+            left: BorderSide(color: AppColors.warning, width: 4),
+            bottom: BorderSide(color: AppColors.border, width: 0.5),
+          ),
+        );
+      } else if (status == PassengerStatus.expired) {
+        itemDecoration = const BoxDecoration(
+          color: Color(0xFFFEF2F2),
+          border: Border(
+            left: BorderSide(color: AppColors.destructive, width: 4),
+            bottom: BorderSide(color: AppColors.border, width: 0.5),
+          ),
+        );
+      }
+    }
+
+    final nameInitials = passenger.name.isNotEmpty
+        ? passenger.name
+              .split(' ')
+              .map((e) => e.substring(0, 1))
+              .join()
+              .toUpperCase()
+        : '??';
+    final truncatedInitials = nameInitials.length > 2
+        ? nameInitials.substring(0, 2)
+        : nameInitials;
 
     return Container(
       padding: EdgeInsets.only(
-        left: (status == PassengerStatus.valid) ? 20 : 16,
+        left: (status == PassengerStatus.valid || isLoading) ? 20 : 16,
         right: 20,
         top: 12,
         bottom: 12,
       ),
       decoration: itemDecoration,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              avatarUrl != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.network(
-                        avatarUrl!,
-                        width: 40,
-                        height: 40,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildInitialsAvatar(
-                              initials ?? name.substring(0, 2),
-                            ),
+      child: ShimmerWrapper(
+        isEnabled: isLoading,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                _buildInitialsAvatar(truncatedInitials),
+                const Padding(padding: EdgeInsets.only(left: 12)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      passenger.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.foreground,
                       ),
-                    )
-                  : _buildInitialsAvatar(initials ?? name.substring(0, 2)),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.foreground,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    time,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.mutedForeground,
+                    const Padding(padding: EdgeInsets.only(top: 2)),
+                    Text(
+                      passenger.time,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.mutedForeground,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          _buildStatusBadge(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInitialsAvatar(String text) {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: const BoxDecoration(
-        color: Color(0xFFE2E8F0),
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF64748B),
+                  ],
+                ),
+              ],
+            ),
+            _buildStatusBadge(status),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildStatusBadge() {
+  Widget _buildInitialsAvatar(String text) => Container(
+    width: 40,
+    height: 40,
+    decoration: const BoxDecoration(
+      color: Color(0xFFE2E8F0),
+      shape: BoxShape.circle,
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF64748B),
+      ),
+    ),
+  );
+
+  Widget _buildStatusBadge(PassengerStatus status) {
     Color labelColor;
     Color bgColor;
     IconData icon;
-    String text;
-
+    String txt;
     switch (status) {
       case PassengerStatus.valid:
         labelColor = AppColors.success;
         bgColor = AppColors.successBg;
         icon = Icons.check_circle_outline;
-        text = 'Valid';
+        txt = 'Valid';
         break;
       case PassengerStatus.usedBefore:
         labelColor = const Color(0xFFB45309);
         bgColor = const Color(0x26F59E0B);
         icon = Icons.warning_amber_rounded;
-        text = 'Used Before';
+        txt = 'Used Before';
         break;
       case PassengerStatus.expired:
         labelColor = AppColors.destructive;
         bgColor = AppColors.destructiveBg;
         icon = Icons.cancel_outlined;
-        text = 'Expired';
+        txt = 'Expired';
         break;
     }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -444,9 +440,9 @@ class PassengerItem extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: labelColor),
-          const SizedBox(width: 6),
+          const Padding(padding: EdgeInsets.only(left: 6)),
           Text(
-            text,
+            txt,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,

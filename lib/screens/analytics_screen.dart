@@ -1,113 +1,120 @@
-import 'package:flutter/material.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+
+import '../constants/assets.dart';
+import '../controllers/analytics_controller.dart';
 import '../models/trip_model.dart';
-import '../services/analytics_storage.dart';
+// Framework & Template Imports
+import '../utils/api_call_status.dart';
+import '../utils/error_data.dart';
+import '../utils/wrappers/shimmer_wrapper.dart';
+import '../widgets/cards/error_card.dart';
 
-class AnalyticsScreen extends StatefulWidget {
+class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
-
-  @override
-  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
-}
-
-class _AnalyticsScreenState extends State<AnalyticsScreen> {
-
-  List<TripModel> _recentTrips = [];
-  int _todayTripsCount = 0;
-  int _todayPassengersCount = 0;
-  
-  int _yesterdayTripsCount = 0;
-  int _yesterdayPassengersCount = 0;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAndProcessAnalytics();
-  }
-
-  Future<void> _loadAndProcessAnalytics() async {
-    // 1. Prepopulate storage with yesterday's mock data if empty
-    await AnalyticsStorage.prepopulateFirstRun();
-
-    // 2. Load all mock trips and process dynamic peak loads
-    final processedTrips = TripModel.getProcessedTrips(TripModel.mockTrips);
-
-    // 3. Calculate today's totals
-    final now = DateTime.now();
-    final todayTrips = processedTrips.where((t) {
-      final s = t.scheduledFor;
-      return s.year == now.year && s.month == now.month && s.day == now.day;
-    }).toList();
-
-    final todayTripsCount = todayTrips.length;
-    final todayPassengers = todayTrips.fold<int>(0, (sum, t) => sum + t.passengerCount);
-
-    // 4. Save today's dynamic stats to local storage
-    await AnalyticsStorage.recordStatsForDate(now, todayPassengers, todayTripsCount);
-
-    // 5. Load yesterday's stats to compute trends
-    final yesterday = now.subtract(const Duration(days: 1));
-    final yesterdaySummary = await AnalyticsStorage.getSummaryForDate(yesterday);
-
-    if (mounted) {
-      setState(() {
-        // Reverse recent trips list for the trip log list (newest first)
-        _recentTrips = processedTrips.reversed.toList();
-        _todayTripsCount = todayTripsCount;
-        _todayPassengersCount = todayPassengers;
-        _yesterdayTripsCount = yesterdaySummary?.totalTrips ?? 0;
-        _yesterdayPassengersCount = yesterdaySummary?.totalPassengers ?? 0;
-        _isLoading = false;
-      });
-    }
-  }
 
   String _formatHeaderDate(DateTime date) {
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return "${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}";
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF7F9FB),
-        body: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0B66B2)),
+    final controller = Get.put(AnalyticsController());
+
+    return Obx(() {
+      final apiCallStatus = controller.apiCallStatus.value;
+      final errorData = controller.errorData.value;
+      final bool isLoading = apiCallStatus == ApiCallStatus.loading;
+
+      if (apiCallStatus == ApiCallStatus.error) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFF7F9FB),
+          body: SafeArea(
+            child: Center(
+              child: ErrorCard(
+                errorData:
+                    errorData ??
+                    ErrorData(
+                      title: 'Error',
+                      body: 'An unexpected error occurred.',
+                      image: Assets.errorsUnknown,
+                      buttonText: 'Retry',
+                    ),
+                refresh: controller.loadAnalytics,
+              ),
+            ),
+          ),
+        );
+      }
+
+      if (apiCallStatus == ApiCallStatus.empty) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFF7F9FB),
+          body: SafeArea(
+            child: Center(
+              child: ErrorCard(
+                errorData: ErrorData(
+                  title: 'No Trip History',
+                  body:
+                      'You have not completed any trips yet to record analytics.',
+                  image: Assets.empty,
+                  buttonText: 'Refresh',
+                ),
+                refresh: controller.loadAnalytics,
+              ),
+            ),
+          ),
+        );
+      }
+
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F9FB),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: controller.loadAnalytics,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildStatsGrid(controller, isLoading, context),
+                        const Padding(padding: EdgeInsets.only(top: 16)),
+                        _buildVolumePanel(controller, isLoading),
+                        const Padding(padding: EdgeInsets.only(top: 16)),
+                        _buildTripLogPanel(controller, isLoading),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FB),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatsGrid(),
-                    const SizedBox(height: 16),
-                    _buildVolumePanel(),
-                    const SizedBox(height: 16),
-                    _buildTripLogPanel(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    });
   }
 
   Widget _buildHeader() {
@@ -159,44 +166,61 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildStatsGrid() {
-    final tripsDiff = _todayTripsCount - _yesterdayTripsCount;
+  Widget _buildStatsGrid(
+    AnalyticsController controller,
+    bool isLoading,
+    BuildContext context,
+  ) {
+    final todayTrips = controller.todayTripsCount.value;
+    final yesterdayTrips = controller.yesterdayTripsCount.value;
+    final todayPassengers = controller.todayPassengersCount.value;
+    final yesterdayPassengers = controller.yesterdayPassengersCount.value;
+
+    final tripsDiff = todayTrips - yesterdayTrips;
     final tripsTrend = tripsDiff > 0
         ? '+$tripsDiff vs yesterday'
         : tripsDiff < 0
-            ? '$tripsDiff vs yesterday'
-            : 'Same as yesterday';
-    final tripsTrendColor = tripsDiff >= 0 ? const Color(0xFF12A75E) : const Color(0xFFDC2626);
+        ? '$tripsDiff vs yesterday'
+        : 'Same as yesterday';
+    final tripsTrendColor = tripsDiff >= 0
+        ? const Color(0xFF12A75E)
+        : const Color(0xFFDC2626);
 
-    final passDiff = _todayPassengersCount - _yesterdayPassengersCount;
+    final passDiff = todayPassengers - yesterdayPassengers;
     final passTrend = passDiff > 0
         ? '+$passDiff vs yesterday'
         : passDiff < 0
-            ? '$passDiff vs yesterday'
-            : 'Same as yesterday';
-    final passTrendColor = passDiff >= 0 ? const Color(0xFF12A75E) : const Color(0xFFDC2626);
+        ? '$passDiff vs yesterday'
+        : 'Same as yesterday';
+    final passTrendColor = passDiff >= 0
+        ? const Color(0xFF12A75E)
+        : const Color(0xFFDC2626);
 
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
+            context: context,
             icon: LucideIcons.bus,
             label: 'Trips completed today',
-            value: _todayTripsCount.toString(),
+            value: todayTrips.toString(),
             trend: tripsTrend,
             trendColor: tripsTrendColor,
             iconColor: const Color(0xFF0B66B2),
+            isLoading: isLoading,
           ),
         ),
-        const SizedBox(width: 12),
+        const Padding(padding: EdgeInsets.only(left: 12)),
         Expanded(
           child: _buildStatCard(
+            context: context,
             icon: LucideIcons.users,
             label: 'Passengers transported',
-            value: _todayPassengersCount.toString(),
+            value: todayPassengers.toString(),
             trend: passTrend,
             trendColor: passTrendColor,
             iconColor: const Color(0xFF0B66B2),
+            isLoading: isLoading,
           ),
         ),
       ],
@@ -210,6 +234,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     required String trend,
     required Color trendColor,
     required Color iconColor,
+    required bool isLoading,
+    required BuildContext context,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -218,60 +244,67 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0x14000000)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F6F2),
-                  borderRadius: BorderRadius.circular(8),
+      child: ShimmerWrapper(
+        isEnabled: isLoading,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F6F2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
                 ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-              Text(
-                trend,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: trendColor,
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.15,
+                  child: AutoSizeText(
+                    isLoading ? 'vs yesterday' : trend,
+                    minFontSize: 5,
+                    maxLines: 2,
+                    maxFontSize: 11,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: isLoading ? const Color(0xFF6C7680) : trendColor,
+                    ),
+                  ),
                 ),
+              ],
+            ),
+            const Padding(padding: EdgeInsets.only(top: 10)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6C7680),
+                height: 1.3,
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF6C7680),
-              height: 1.3,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0B1220),
-              height: 1,
+            const Padding(padding: EdgeInsets.only(top: 4)),
+            Text(
+              isLoading ? '--' : value,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0B1220),
+                height: 1,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildVolumePanel() {
-    // Show chart for chronologically sorted recent trips (up to last 7)
-    // We reverse _recentTrips (which was reversed for UI listing) to restore chronological order
-    final chronologicalTrips = _recentTrips.reversed.toList();
+  Widget _buildVolumePanel(AnalyticsController controller, bool isLoading) {
+    final chronologicalTrips = controller.recentTrips.reversed.toList();
     final chartTrips = chronologicalTrips.length > 7
         ? chronologicalTrips.sublist(chronologicalTrips.length - 7)
         : chronologicalTrips;
@@ -291,135 +324,150 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0x14000000)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Passenger volume',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B1220),
+      child: ShimmerWrapper(
+        isEnabled: isLoading,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Passenger volume',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0B1220),
+                  ),
                 ),
-              ),
-              Text(
-                'Last ${chartTrips.length} trips',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF6C7680),
+                Text(
+                  isLoading
+                      ? 'Last -- trips'
+                      : 'Last ${chartTrips.length} trips',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF6C7680),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 200,
-            child: chartTrips.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No trip data available',
-                      style: TextStyle(color: Color(0xFF6C7680)),
-                    ),
-                  )
-                : BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: computedMaxY,
-                      barTouchData: BarTouchData(enabled: false),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              final index = value.toInt();
-                              if (index < 0 || index >= chartTrips.length) {
-                                return const SizedBox.shrink();
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  'Trip ${index + 1}',
+              ],
+            ),
+            const Padding(padding: EdgeInsets.only(top: 24)),
+            SizedBox(
+              height: 200,
+              child: isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF0B66B2),
+                        ),
+                      ),
+                    )
+                  : chartTrips.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No trip data available',
+                        style: TextStyle(color: Color(0xFF6C7680)),
+                      ),
+                    )
+                  : BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: computedMaxY,
+                        barTouchData: BarTouchData(enabled: false),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
+                                if (index < 0 || index >= chartTrips.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    'Trip ${index + 1}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF6C7680),
+                                    ),
+                                  ),
+                                );
+                              },
+                              reservedSize: 28,
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                if (value % 10 != 0)
+                                  return const SizedBox.shrink();
+                                return Text(
+                                  value.toInt().toString(),
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
                                     color: Color(0xFF6C7680),
                                   ),
-                                ),
-                              );
-                            },
-                            reservedSize: 28,
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              if (value % 10 != 0) return const SizedBox.shrink();
-                              return Text(
-                                value.toInt().toString(),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF6C7680),
-                                ),
-                              );
-                            },
-                            reservedSize: 28,
-                          ),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                      ),
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) {
-                          return const FlLine(
-                            color: Color(0xFFE9EEF2),
-                            strokeWidth: 1,
-                          );
-                        },
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: List.generate(chartTrips.length, (index) {
-                        return BarChartGroupData(
-                          x: index,
-                          barRods: [
-                            BarChartRodData(
-                              toY: chartTrips[index].passengerCount.toDouble(),
-                              color: chartTrips[index].isPeakLoad
-                                  ? const Color(0xFFFFB400)
-                                  : const Color(0xFF0B66B2),
-                              width: 26,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(8),
-                                topRight: Radius.circular(8),
-                              ),
+                                );
+                              },
+                              reservedSize: 28,
                             ),
-                          ],
-                        );
-                      }),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                        ),
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          getDrawingHorizontalLine: (value) {
+                            return const FlLine(
+                              color: Color(0xFFE9EEF2),
+                              strokeWidth: 1,
+                            );
+                          },
+                        ),
+                        borderData: FlBorderData(show: false),
+                        barGroups: List.generate(chartTrips.length, (index) {
+                          return BarChartGroupData(
+                            x: index,
+                            barRods: [
+                              BarChartRodData(
+                                toY: chartTrips[index].passengerCount
+                                    .toDouble(),
+                                color: chartTrips[index].isPeakLoad
+                                    ? const Color(0xFFFFB400)
+                                    : const Color(0xFF0B66B2),
+                                width: 26,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  topRight: Radius.circular(8),
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                      ),
                     ),
-                  ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildLegendItem(const Color(0xFF0B66B2), 'Regular load'),
-              const SizedBox(width: 12),
-              _buildLegendItem(const Color(0xFFFFB400), 'Peak load'),
-            ],
-          ),
-        ],
+            ),
+            const Padding(padding: EdgeInsets.only(top: 16)),
+            Row(
+              children: [
+                _buildLegendItem(const Color(0xFF0B66B2), 'Regular load'),
+                const Padding(padding: EdgeInsets.only(left: 12)),
+                _buildLegendItem(const Color(0xFFFFB400), 'Peak load'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -432,7 +480,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
+        const Padding(padding: EdgeInsets.only(left: 6)),
         Text(
           label,
           style: const TextStyle(
@@ -445,7 +493,30 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildTripLogPanel() {
+  Widget _buildTripLogPanel(AnalyticsController controller, bool isLoading) {
+    final displayTrips = isLoading
+        ? List.generate(
+            3,
+            (index) => TripModel(
+              id: '$index',
+              scheduledFor: DateTime.now(),
+              status: 'COMPLETED',
+              busIdentifier: '104',
+              route: RouteModel(
+                id: '$index',
+                routeNumber: '--',
+                name: 'Placeholder Route',
+              ),
+              passengerCount: 0,
+              isPeakLoad: false,
+              createdAt: DateTime.now(),
+              driverId: '',
+              routeId: '',
+              updatedAt: DateTime.now(),
+            ),
+          )
+        : controller.recentTrips;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -468,7 +539,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
               ),
               Text(
-                'Showing last ${_recentTrips.length} runs',
+                isLoading
+                    ? 'Showing last -- runs'
+                    : 'Showing last ${displayTrips.length} runs',
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -477,8 +550,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _recentTrips.isEmpty
+          const Padding(padding: EdgeInsets.only(top: 16)),
+          displayTrips.isEmpty
               ? const Center(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 24.0),
@@ -491,10 +564,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               : ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _recentTrips.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemCount: displayTrips.length,
+                  separatorBuilder: (context, index) =>
+                      const Padding(padding: EdgeInsets.only(top: 12)),
                   itemBuilder: (context, index) {
-                    return _buildTripLogCard(_recentTrips[index]);
+                    return _buildTripLogCard(displayTrips[index], isLoading);
                   },
                 ),
         ],
@@ -516,7 +590,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return '${hour.toString().padLeft(2, '0')}:$min $ampm';
   }
 
-  Widget _buildTripLogCard(TripModel trip) {
+  Widget _buildTripLogCard(TripModel trip, bool isLoading) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -524,67 +598,83 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0x14000000)),
       ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Route ${trip.route.routeNumber} · ${trip.route.name}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0B1220),
-                        overflow: TextOverflow.ellipsis,
+      child: ShimmerWrapper(
+        isEnabled: isLoading,
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isLoading
+                            ? 'Route -- · Placeholder Route'
+                            : 'Route ${trip.route.routeNumber} · ${trip.route.name}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0B1220),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatTripTime(trip),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6C7680),
+                      const Padding(padding: EdgeInsets.only(top: 4)),
+                      Text(
+                        isLoading
+                            ? 'Scheduled: --:-- --'
+                            : _formatTripTime(trip),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6C7680),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0F6F2),
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: const Text(
-                  'Completed',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0B1220),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMetric('Passengers', trip.passengerCount.toString()),
-              _buildMetric(
-                'Load Type',
-                trip.isPeakLoad ? 'Peak Load' : 'Regular',
-                valueColor: trip.isPeakLoad ? const Color(0xFFFFB400) : const Color(0xFF0B66B2),
-              ),
-            ],
-          ),
-        ],
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F6F2),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    trip.status,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B1220),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Padding(padding: EdgeInsets.only(top: 12)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildMetric(
+                  'Passengers',
+                  isLoading ? '--' : trip.passengerCount.toString(),
+                ),
+                _buildMetric(
+                  'Load Type',
+                  isLoading
+                      ? 'Regular'
+                      : (trip.isPeakLoad ? 'Peak Load' : 'Regular'),
+                  valueColor: !isLoading && trip.isPeakLoad
+                      ? const Color(0xFFFFB400)
+                      : const Color(0xFF0B66B2),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -601,7 +691,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             color: Color(0xFF6C7680),
           ),
         ),
-        const SizedBox(height: 4),
+        const Padding(padding: EdgeInsets.only(top: 4)),
         Text(
           value,
           style: TextStyle(

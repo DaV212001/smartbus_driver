@@ -20,12 +20,14 @@ class ShimmerWrapper extends StatelessWidget {
     return isEnabled == true ? _buildShimmerLayout(child, context) : child;
   }
 
-  Widget _buildShimmerLayout(Widget widget, BuildContext context) {
+  Widget _buildShimmerLayout(Widget? widget, BuildContext context) {
+    if (widget == null) return const SizedBox.shrink();
+
     // Check for Padding widget and apply padding to its child recursively
     if (widget is Padding) {
       return Padding(
         padding: widget.padding,
-        child: _buildShimmerLayout(widget.child!, context),
+        child: widget.child == null ? null : _buildShimmerLayout(widget.child, context),
       );
     }
     if (widget is Expanded) {

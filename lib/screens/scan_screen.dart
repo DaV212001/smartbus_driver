@@ -49,14 +49,6 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
                 ),
               ],
             ),
-
-            // 4. Positioned Floating Custom Navigation Bar
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildBottomNavigationBar(context),
-            ),
           ],
         ),
       ),
@@ -114,7 +106,7 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
 
   Widget _buildScannerViewport(BuildContext context) {
     return Container(
-      height: 320,
+      height: MediaQuery.of(context).size.height * 0.5,
       width: double.infinity,
       color: Colors.black,
       child: Stack(
@@ -191,6 +183,7 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
               borderRadius: BorderRadius.circular(24),
             ),
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 _buildCorner(top: -2, left: -2, isTop: true, isLeft: true),
                 _buildCorner(top: -2, right: -2, isTop: true, isLeft: false),
