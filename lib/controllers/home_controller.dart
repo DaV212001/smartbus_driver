@@ -16,20 +16,12 @@ class HomeController extends GetxController {
   var activeTrip = Rxn<TripModel>();
   var tripsCompleted = 0.obs;
   var passengersTransported = 0.obs;
-  var currentIndex = 0.obs;
   var isActionLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
     loadDashboardData();
-  }
-
-  void changeTab(int index) {
-    currentIndex.value = index;
-    if (index == 0) {
-      loadDashboardData();
-    }
   }
 
   Future<void> loadDashboardData() async {
@@ -39,8 +31,22 @@ class HomeController extends GetxController {
       path: '/v1/trips',
       queryParameters: {'limit': '100'},
       onSuccess: (response) async {
-        final Map<String, dynamic> responseData = response.data;
-        final List<dynamic> items = responseData['items'] ?? [];
+        final dynamic rawData = response.data;
+        List<dynamic> items = [];
+        if (rawData is Map<String, dynamic>) {
+          if (rawData.containsKey('data')) {
+            final nested = rawData['data'];
+            if (nested is Map<String, dynamic>) {
+              items = nested['items'] ?? [];
+            } else if (nested is List<dynamic>) {
+              items = nested;
+            }
+          } else {
+            items = rawData['items'] ?? [];
+          }
+        } else if (rawData is List<dynamic>) {
+          items = rawData;
+        }
         final List<TripModel> trips = items
             .map((e) => TripModel.fromJson(e))
             .toList();

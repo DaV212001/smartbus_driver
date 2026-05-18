@@ -12,10 +12,12 @@ import 'config/translation.dart';
 import 'constants/user_controller.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/theme_mode_controller.dart';
+import 'services/local_queue_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ConfigPreference.init();
+  await LocalQueueService.init();
   runApp(const MyApp());
 }
 

@@ -1,53 +1,57 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import '../controllers/scan_controller.dart';
+import '../controllers/home_controller.dart';
+import '../utils/api_call_status.dart';
+import '../utils/wrappers/shimmer_wrapper.dart';
+import '../widgets/cards/error_card.dart';
+import '../utils/error_data.dart';
+import '../constants/assets.dart';
 
-class TicketScannerScreen extends StatefulWidget {
+class TicketScannerScreen extends StatelessWidget {
   const TicketScannerScreen({super.key});
 
-  @override
-  State<TicketScannerScreen> createState() => _TicketScannerScreenState();
-}
-
-class _TicketScannerScreenState extends State<TicketScannerScreen> {
-  String _activeMode = 'Standard';
-  int _currentIndex = 2; // Default active index set to 'Scan'
-
-  // Application Custom Theme Constants
   static const Color successColor = Color(0xFF10B981);
+  static const Color errorColor = Color(0xFFEF4444);
   static const Color mutedColor = Color(0xFFF3F4F6);
   static const Color mutedForegroundColor = Color(0xFF6B7280);
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.put(ScanController());
+
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                // 1. Header Section
-                _buildHeader(context),
+            // 1. Header Section
+            _buildHeader(context),
 
-                // Main Scrollable Area
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(
-                      bottom: 90.0,
-                    ), // Padding to avoid clipping behind navigation bar
-                    child: Column(
-                      children: [
-                        // 2. Camera Viewport Section
-                        _buildScannerViewport(context),
+            // 2. Camera Viewport Section
+            _buildScannerViewport(context, controller),
 
-                        // 3. Last Scan Feedback Section
-                        _buildScanFeedback(context),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            // 3. Scan Feedback Section
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Obx(() {
+                  final status = controller.apiCallStatus.value;
+                  switch (status) {
+                    case ApiCallStatus.holding:
+                      return _buildHoldingFeedback(context);
+                    case ApiCallStatus.loading:
+                      return _buildLoadingFeedback(context);
+                    case ApiCallStatus.success:
+                      return _buildSuccessFeedback(context, controller);
+                    case ApiCallStatus.error:
+                      return _buildErrorFeedback(context, controller);
+                    default:
+                      return _buildHoldingFeedback(context);
+                  }
+                }),
+              ),
             ),
           ],
         ),
@@ -55,10 +59,17 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
     );
   }
 
-  // --- WIDGET BUILDERS ---
-
   Widget _buildHeader(BuildContext context) {
     final theme = Theme.of(context);
+    String busInfo = 'Bus #104 • Route --';
+    try {
+      final homeController = Get.find<HomeController>();
+      final activeTrip = homeController.activeTrip.value;
+      if (activeTrip != null) {
+        busInfo = 'Bus ${activeTrip.busIdentifier} • Route ${activeTrip.route.routeNumber}';
+      }
+    } catch (_) {}
+
     return Container(
       color: theme.colorScheme.primary,
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -76,9 +87,9 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
                   fontSize: 18,
                 ),
               ),
-              const SizedBox(height: 2),
+              const Padding(padding: EdgeInsets.only(top: 2)),
               Text(
-                'Bus #104 • Route 42',
+                busInfo,
                 style: TextStyle(
                   color: theme.colorScheme.onPrimary.withOpacity(0.9),
                   fontSize: 13,
@@ -94,7 +105,7 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.tune_outlined, // Fallback for lucide:settings-2
+              Icons.tune_outlined,
               size: 18,
               color: theme.colorScheme.onPrimary,
             ),
@@ -104,59 +115,38 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
     );
   }
 
-  Widget _buildScannerViewport(BuildContext context) {
+  Widget _buildScannerViewport(BuildContext context, ScanController controller) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.5,
+      height: MediaQuery.of(context).size.height * 0.42,
       width: double.infinity,
       color: Colors.black,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Simulated Camera Feed Image with Grayscale & Blur filter
+          // 1. MobileScanner Camera View
           Positioned.fill(
-            child: ColorFiltered(
-              colorFilter: const ColorFilter.matrix([
-                0.2126,
-                0.7152,
-                0.0722,
-                0,
-                0,
-                0.2126,
-                0.7152,
-                0.0722,
-                0,
-                0,
-                0.2126,
-                0.7152,
-                0.0722,
-                0,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-              ]),
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Image.network(
-                  'https://app.banani.co/avatar1.jpeg',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      Container(color: Colors.grey[900]),
-                ),
-              ),
+            child: MobileScanner(
+              onDetect: (capture) {
+                final List<Barcode> barcodes = capture.barcodes;
+                if (barcodes.isNotEmpty) {
+                  final String? code = barcodes.first.rawValue;
+                  if (code != null) {
+                    controller.processScan(code);
+                  }
+                }
+              },
             ),
           ),
-          // Dark Dim Overlay layer over background
+          
+          // 2. Translucent dark dim overlay
           Positioned.fill(
-            child: Container(color: Colors.black.withOpacity(0.4)),
+            child: Container(color: Colors.black.withOpacity(0.35)),
           ),
 
-          // Segmentation Switch Pill
+          // 3. Mode Toggle Switch Pill
           Positioned(
-            top: 20,
-            child: Container(
+            top: 16,
+            child: Obx(() => Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.6),
@@ -164,64 +154,77 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
               ),
               child: Row(
                 children: [
-                  _buildModeButton('Standard'),
-                  _buildModeButton('Inspection'),
+                  _buildModeButton(controller, 'Standard'),
+                  _buildModeButton(controller, 'Inspection'),
                 ],
               ),
-            ),
+            )),
           ),
 
-          // QR Scan Frame Target Overlay
+          // 4. QR Scan Target Frame
           Container(
-            width: 240,
-            height: 240,
+            width: 200,
+            height: 200,
             decoration: BoxDecoration(
               border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 2,
+                color: Colors.white.withOpacity(0.25),
+                width: 1.5,
               ),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                _buildCorner(top: -2, left: -2, isTop: true, isLeft: true),
-                _buildCorner(top: -2, right: -2, isTop: true, isLeft: false),
-                _buildCorner(bottom: -2, left: -2, isTop: false, isLeft: true),
-                _buildCorner(
-                  bottom: -2,
-                  right: -2,
-                  isTop: false,
-                  isLeft: false,
-                ),
+                _buildCorner(context, top: -2, left: -2, isTop: true, isLeft: true),
+                _buildCorner(context, top: -2, right: -2, isTop: true, isLeft: false),
+                _buildCorner(context, bottom: -2, left: -2, isTop: false, isLeft: true),
+                _buildCorner(context, bottom: -2, right: -2, isTop: false, isLeft: false),
               ],
             ),
           ),
 
-          // Instruction Overlay Text Guideline
+          // 5. Connectivity State Pill
           Positioned(
-            bottom: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: const Text(
-                'Align QR code within frame',
-                style: TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            ),
+            bottom: 16,
+            child: Obx(() {
+              final isOffline = controller.isOffline.value;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isOffline ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isOffline ? Icons.cloud_off : Icons.cloud_done,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const Padding(padding: EdgeInsets.only(left: 6)),
+                    Text(
+                      isOffline ? 'Offline Mode' : 'Online Mode',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildModeButton(String title) {
-    final bool isActive = _activeMode == title;
+  Widget _buildModeButton(ScanController controller, String mode) {
+    final bool isActive = controller.activeMode.value == mode;
     return GestureDetector(
-      onTap: () => setState(() => _activeMode = title),
+      onTap: () => controller.toggleMode(mode),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -229,9 +232,9 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
-          title,
+          mode,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: isActive ? Colors.black : Colors.white.withOpacity(0.7),
           ),
@@ -240,7 +243,8 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
     );
   }
 
-  Widget _buildCorner({
+  Widget _buildCorner(
+    BuildContext context, {
     double? top,
     double? bottom,
     double? left,
@@ -255,44 +259,78 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
       left: left,
       right: right,
       child: Container(
-        width: 32,
-        height: 32,
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
           border: Border(
             top: isTop
-                ? BorderSide(color: theme.colorScheme.primary, width: 4)
+                ? BorderSide(color: theme.colorScheme.primary, width: 3)
                 : BorderSide.none,
             bottom: !isTop
-                ? BorderSide(color: theme.colorScheme.primary, width: 4)
+                ? BorderSide(color: theme.colorScheme.primary, width: 3)
                 : BorderSide.none,
             left: isLeft
-                ? BorderSide(color: theme.colorScheme.primary, width: 4)
+                ? BorderSide(color: theme.colorScheme.primary, width: 3)
                 : BorderSide.none,
             right: !isLeft
-                ? BorderSide(color: theme.colorScheme.primary, width: 4)
+                ? BorderSide(color: theme.colorScheme.primary, width: 3)
                 : BorderSide.none,
           ),
           borderRadius: BorderRadius.only(
-            topLeft: isTop && isLeft ? const Radius.circular(20) : Radius.zero,
-            topRight: isTop && !isLeft
-                ? const Radius.circular(20)
-                : Radius.zero,
-            bottomLeft: !isTop && isLeft
-                ? const Radius.circular(20)
-                : Radius.zero,
-            bottomRight: !isTop && !isLeft
-                ? const Radius.circular(20)
-                : Radius.zero,
+            topLeft: isTop && isLeft ? const Radius.circular(16) : Radius.zero,
+            topRight: isTop && !isLeft ? const Radius.circular(16) : Radius.zero,
+            bottomLeft: !isTop && isLeft ? const Radius.circular(16) : Radius.zero,
+            bottomRight: !isTop && !isLeft ? const Radius.circular(16) : Radius.zero,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildScanFeedback(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.surface,
-      padding: const EdgeInsets.all(20.0),
+  Widget _buildHoldingFeedback(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Padding(padding: EdgeInsets.only(top: 20)),
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.qr_code_2,
+            color: Theme.of(context).colorScheme.primary,
+            size: 36,
+          ),
+        ),
+        const Padding(padding: EdgeInsets.only(top: 16)),
+        const Text(
+          'Ready to Scan',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        const Padding(padding: EdgeInsets.only(top: 6)),
+        const Text(
+          'Align a passenger\'s ticket QR code inside the viewport to perform cryptographic validation.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            color: mutedForegroundColor,
+            height: 1.4,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingFeedback(BuildContext context) {
+    return ShimmerWrapper(
+      isEnabled: true,
       child: Column(
         children: [
           Row(
@@ -301,51 +339,30 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
                 width: 48,
                 height: 48,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFDCFCE7),
+                  color: Colors.grey,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check, color: successColor, size: 32),
               ),
-              const SizedBox(width: 12),
+              const Padding(padding: EdgeInsets.only(left: 12)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Valid Ticket',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Ticket consumed successfully.',
-                      style: TextStyle(
-                        color: mutedForegroundColor,
-                        fontSize: 13,
-                      ),
-                    ),
+                    Container(width: 120, height: 16, color: Colors.grey),
+                    const Padding(padding: EdgeInsets.only(top: 6)),
+                    Container(width: 180, height: 12, color: Colors.grey),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const Padding(padding: EdgeInsets.only(top: 16)),
           Container(
-            padding: const EdgeInsets.all(12),
+            width: double.infinity,
+            height: 56,
             decoration: BoxDecoration(
-              color: mutedColor,
+              color: Colors.grey,
               borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _MetaItem(label: 'Passenger', value: 'Hana Kebede'),
-                _MetaItem(label: 'Type', value: 'Standard'),
-                _MetaItem(label: 'Scan Time', value: '08:42 AM'),
-              ],
             ),
           ),
         ],
@@ -353,113 +370,151 @@ class _TicketScannerScreenState extends State<TicketScannerScreen> {
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      height: 64 + MediaQuery.of(context).padding.bottom,
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: const Border(top: BorderSide(color: Color(0x14000000))),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(0, Icons.home_outlined, 'Home'),
-              _buildNavItem(1, Icons.people_outline, 'List'),
-              const SizedBox(
-                width: 56,
-              ), // Placeholder spatial gap structural support for the FAB
-              _buildNavItem(3, Icons.notifications_none, 'Alerts'),
-              _buildNavItem(4, Icons.bar_chart_outlined, 'Stats'),
-            ],
-          ),
-          Positioned(
-            top: -24,
-            left: MediaQuery.of(context).size.width / 2 - 28,
-            child: GestureDetector(
-              onTap: () => setState(() => _currentIndex = 2),
+  Widget _buildSuccessFeedback(BuildContext context, ScanController controller) {
+    final result = controller.lastScanResult.value!;
+    final isInspection = result.result == 'INSPECTION_ONLY';
+    final ticketId = result.ticketId ?? '----';
+    final String passengerName = result.payload?.passengerId != null
+        ? 'Passenger #${result.payload!.passengerId.substring(0, 5)}'
+        : 'Boarding Passenger';
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: successColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle, color: successColor, size: 30),
+            ),
+            const Padding(padding: EdgeInsets.only(left: 12)),
+            Expanded(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.colorScheme.surface,
-                        width: 4,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.qr_code_scanner,
-                      color: theme.colorScheme.onPrimary,
-                      size: 28,
+                  Text(
+                    isInspection ? 'Inspection Verified' : 'Valid Ticket',
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const Padding(padding: EdgeInsets.only(top: 4)),
                   Text(
-                    'Scan',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: _currentIndex == 2
-                          ? theme.colorScheme.primary
-                          : mutedForegroundColor,
+                    isInspection
+                        ? 'Ticket signature is valid but state is kept active.'
+                        : 'Ticket validated and boarding approved.',
+                    style: const TextStyle(
+                      color: mutedForegroundColor,
+                      fontSize: 13,
                     ),
                   ),
                 ],
               ),
             ),
+          ],
+        ),
+        const Padding(padding: EdgeInsets.only(top: 16)),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: mutedColor,
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _MetaItem(label: 'Passenger', value: passengerName),
+                  _MetaItem(
+                    label: 'Type',
+                    value: isInspection ? 'Inspection' : 'Standard',
+                  ),
+                  _MetaItem(label: 'Scan Time', value: controller.scannedAtString.value),
+                ],
+              ),
+              const Padding(padding: EdgeInsets.only(top: 12)),
+              const Divider(color: Color(0x14000000), height: 1),
+              const Padding(padding: EdgeInsets.only(top: 12)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TICKET ID',
+                        style: TextStyle(fontSize: 10, color: mutedForegroundColor),
+                      ),
+                      const Padding(padding: EdgeInsets.only(top: 2)),
+                      Text(
+                        ticketId.length > 18 ? ticketId.substring(0, 18) + '...' : ticketId,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (result.payload?.fareAmount != null)
+                    Text(
+                      '${result.payload!.fareAmount} ETB',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const Padding(padding: EdgeInsets.only(top: 16)),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: () => controller.reset(),
+            icon: const Icon(Icons.qr_code_scanner, size: 20),
+            label: const Text(
+              'Scan Next Ticket',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Theme.of(context).colorScheme.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final bool isSelected = _currentIndex == index;
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
-      child: SizedBox(
-        width: 60,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : mutedForegroundColor,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : mutedForegroundColor,
+  Widget _buildErrorFeedback(BuildContext context, ScanController controller) {
+    final error = controller.errorData.value;
+    return Column(
+      children: [
+        ErrorCard(
+          errorData: error ??
+              ErrorData(
+                title: 'Scan Failed',
+                body: 'The scanned ticket could not be validated.',
+                image: Assets.errorsUnknown,
+                buttonText: 'Scan Again',
               ),
-            ),
-          ],
+          refresh: () => controller.reset(),
         ),
-      ),
+      ],
     );
   }
 }
@@ -480,16 +535,16 @@ class _MetaItem extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 11,
-            color: _TicketScannerScreenState.mutedForegroundColor,
+            color: TicketScannerScreen.mutedForegroundColor,
           ),
         ),
-        const SizedBox(height: 2),
+        const Padding(padding: EdgeInsets.only(top: 4)),
         Text(
           value,
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.black,
+            color: Color(0xFF0F172A),
           ),
         ),
       ],
