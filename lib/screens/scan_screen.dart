@@ -61,12 +61,15 @@ class TicketScannerScreen extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final theme = Theme.of(context);
-    String busInfo = 'Bus #104 • Route --';
+    String busInfo = 'bus_route_info_default'.tr;
     try {
       final homeController = Get.find<HomeController>();
       final activeTrip = homeController.activeTrip.value;
       if (activeTrip != null) {
-        busInfo = 'Bus ${activeTrip.busIdentifier} • Route ${activeTrip.route.routeNumber}';
+        busInfo = 'bus_route_info'.trParams({
+          'bus': activeTrip.busIdentifier,
+          'route': activeTrip.route.routeNumber,
+        });
       }
     } catch (_) {}
 
@@ -80,7 +83,7 @@ class TicketScannerScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Ticket Scanner',
+                'ticket_scanner'.tr,
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,
@@ -154,8 +157,8 @@ class TicketScannerScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  _buildModeButton(controller, 'Standard'),
-                  _buildModeButton(controller, 'Inspection'),
+                  _buildModeButton(controller, 'Standard', 'standard'.tr),
+                  _buildModeButton(controller, 'Inspection', 'inspection'.tr),
                 ],
               ),
             )),
@@ -204,7 +207,7 @@ class TicketScannerScreen extends StatelessWidget {
                     ),
                     const Padding(padding: EdgeInsets.only(left: 6)),
                     Text(
-                      isOffline ? 'Offline Mode' : 'Online Mode',
+                      isOffline ? 'offline_mode'.tr : 'online_mode'.tr,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -221,10 +224,10 @@ class TicketScannerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildModeButton(ScanController controller, String mode) {
-    final bool isActive = controller.activeMode.value == mode;
+  Widget _buildModeButton(ScanController controller, String modeKey, String label) {
+    final bool isActive = controller.activeMode.value == modeKey;
     return GestureDetector(
-      onTap: () => controller.toggleMode(mode),
+      onTap: () => controller.toggleMode(modeKey),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -232,7 +235,7 @@ class TicketScannerScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
-          mode,
+          label,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -306,19 +309,19 @@ class TicketScannerScreen extends StatelessWidget {
           ),
         ),
         const Padding(padding: EdgeInsets.only(top: 16)),
-        const Text(
-          'Ready to Scan',
-          style: TextStyle(
+        Text(
+          'ready_to_scan'.tr,
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Color(0xFF0F172A),
           ),
         ),
         const Padding(padding: EdgeInsets.only(top: 6)),
-        const Text(
-          'Align a passenger\'s ticket QR code inside the viewport to perform cryptographic validation.',
+        Text(
+          'align_qr_prompt'.tr,
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 13,
             color: mutedForegroundColor,
             height: 1.4,
@@ -375,8 +378,8 @@ class TicketScannerScreen extends StatelessWidget {
     final isInspection = result.result == 'INSPECTION_ONLY';
     final ticketId = result.ticketId ?? '----';
     final String passengerName = result.payload?.passengerId != null
-        ? 'Passenger #${result.payload!.passengerId.substring(0, 5)}'
-        : 'Boarding Passenger';
+        ? '${'passenger'.tr} #${result.payload!.passengerId.substring(0, 5)}'
+        : 'boarding_passenger'.tr;
 
     return Column(
       children: [
@@ -397,7 +400,7 @@ class TicketScannerScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isInspection ? 'Inspection Verified' : 'Valid Ticket',
+                    isInspection ? 'inspection_verified'.tr : 'valid_ticket'.tr,
                     style: const TextStyle(
                       color: Color(0xFF0F172A),
                       fontWeight: FontWeight.bold,
@@ -407,8 +410,8 @@ class TicketScannerScreen extends StatelessWidget {
                   const Padding(padding: EdgeInsets.only(top: 4)),
                   Text(
                     isInspection
-                        ? 'Ticket signature is valid but state is kept active.'
-                        : 'Ticket validated and boarding approved.',
+                        ? 'inspection_verified_desc'.tr
+                        : 'valid_ticket_desc'.tr,
                     style: const TextStyle(
                       color: mutedForegroundColor,
                       fontSize: 13,
@@ -431,12 +434,12 @@ class TicketScannerScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _MetaItem(label: 'Passenger', value: passengerName),
+                  _MetaItem(label: 'passenger'.tr, value: passengerName),
                   _MetaItem(
-                    label: 'Type',
-                    value: isInspection ? 'Inspection' : 'Standard',
+                    label: 'type'.tr,
+                    value: isInspection ? 'inspection'.tr : 'standard'.tr,
                   ),
-                  _MetaItem(label: 'Scan Time', value: controller.scannedAtString.value),
+                  _MetaItem(label: 'scan_time'.tr, value: controller.scannedAtString.value),
                 ],
               ),
               const Padding(padding: EdgeInsets.only(top: 12)),
@@ -448,13 +451,13 @@ class TicketScannerScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'TICKET ID',
-                        style: TextStyle(fontSize: 10, color: mutedForegroundColor),
+                      Text(
+                        'ticket_id_title'.tr,
+                        style: const TextStyle(fontSize: 10, color: mutedForegroundColor),
                       ),
                       const Padding(padding: EdgeInsets.only(top: 2)),
                       Text(
-                        ticketId.length > 18 ? ticketId.substring(0, 18) + '...' : ticketId,
+                        ticketId.length > 18 ? '${ticketId.substring(0, 18)}...' : ticketId,
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -484,9 +487,9 @@ class TicketScannerScreen extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: () => controller.reset(),
             icon: const Icon(Icons.qr_code_scanner, size: 20),
-            label: const Text(
-              'Scan Next Ticket',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            label: Text(
+              'scan_next_ticket'.tr,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: Theme.of(context).colorScheme.primary),
@@ -507,10 +510,10 @@ class TicketScannerScreen extends StatelessWidget {
         ErrorCard(
           errorData: error ??
               ErrorData(
-                title: 'Scan Failed',
-                body: 'The scanned ticket could not be validated.',
+                title: 'scan_failed'.tr,
+                body: 'scan_failed_desc'.tr,
                 image: Assets.errorsUnknown,
-                buttonText: 'Scan Again',
+                buttonText: 'scan_again'.tr,
               ),
           refresh: () => controller.reset(),
         ),

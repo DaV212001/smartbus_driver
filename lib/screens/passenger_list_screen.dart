@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 
 import '../constants/assets.dart';
 import '../controllers/passenger_list_controller.dart';
-// Framework & Template Imports
 import '../utils/api_call_status.dart';
 import '../utils/error_data.dart';
 import '../utils/templates/loaded_widgets_template.dart';
@@ -50,10 +49,10 @@ class PassengerListScreen extends StatelessWidget {
               errorData:
                   errorData ??
                   ErrorData(
-                    title: 'Error',
-                    body: 'An unexpected error occurred.',
+                    title: 'error'.tr,
+                    body: 'unexpected_error'.tr,
                     image: Assets.errorsUnknown,
-                    buttonText: 'Retry',
+                    buttonText: 'retry'.tr,
                   ),
               refresh: controller.loadScansData,
             ),
@@ -68,11 +67,10 @@ class PassengerListScreen extends StatelessWidget {
           body: Center(
             child: ErrorCard(
               errorData: ErrorData(
-                title: 'No Active Trip',
-                body:
-                    'Start a trip on the home screen to view ticket validation scans.',
+                title: 'no_active_trip'.tr,
+                body: 'no_active_trip_desc'.tr,
                 image: Assets.empty,
-                buttonText: 'Refresh',
+                buttonText: 'refresh'.tr,
               ),
               refresh: controller.loadScansData,
             ),
@@ -113,11 +111,10 @@ class PassengerListScreen extends StatelessWidget {
                 onEmpty: Center(
                   child: ErrorCard(
                     errorData: ErrorData(
-                      title: 'No Scans Recorded',
-                      body:
-                          'No passengers have been scanned during this trip yet.',
+                      title: 'no_scans_recorded'.tr,
+                      body: 'no_scans_recorded_desc'.tr,
                       image: Assets.empty,
-                      buttonText: 'Refresh',
+                      buttonText: 'refresh'.tr,
                     ),
                     refresh: controller.loadScansData,
                   ),
@@ -151,8 +148,10 @@ class PassengerListScreen extends StatelessWidget {
     String busInfo = '';
     final activeTrip = ctrl.activeTrip.value;
     if (!isLoading && activeTrip != null) {
-      busInfo =
-          'Bus #${activeTrip.busIdentifier} • Route ${activeTrip.route.routeNumber}';
+      busInfo = 'bus_route_info'.trParams({
+        'bus': activeTrip.busIdentifier,
+        'route': activeTrip.route.routeNumber,
+      });
     }
     return PreferredSize(
       preferredSize: const Size.fromHeight(80),
@@ -171,9 +170,9 @@ class PassengerListScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  'Passenger List',
-                  style: TextStyle(
+                Text(
+                  'passenger_list'.tr,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -238,17 +237,17 @@ class StatsBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildStatItem(
-              'Total',
+              'total'.tr,
               isLoading ? '--' : total.toString(),
               AppColors.mutedForeground,
             ),
             _buildStatItem(
-              'Valid',
+              'valid'.tr,
               isLoading ? '--' : valid.toString(),
               AppColors.success,
             ),
             _buildStatItem(
-              'Issues',
+              'issues'.tr,
               isLoading ? '--' : issues.toString(),
               AppColors.warning,
             ),
@@ -415,19 +414,19 @@ class PassengerItem extends StatelessWidget {
         labelColor = AppColors.success;
         bgColor = AppColors.successBg;
         icon = Icons.check_circle_outline;
-        txt = 'Valid';
+        txt = 'valid'.tr;
         break;
       case PassengerStatus.usedBefore:
         labelColor = const Color(0xFFB45309);
         bgColor = const Color(0x26F59E0B);
         icon = Icons.warning_amber_rounded;
-        txt = 'Used Before';
+        txt = 'used_before'.tr;
         break;
       case PassengerStatus.expired:
         labelColor = AppColors.destructive;
         bgColor = AppColors.destructiveBg;
         icon = Icons.cancel_outlined;
-        txt = 'Expired';
+        txt = 'expired'.tr;
         break;
     }
     return Container(

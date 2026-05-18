@@ -8,7 +8,6 @@ import '../config/storage_config.dart';
 import '../constants/assets.dart';
 import '../controllers/home_controller.dart';
 import '../models/trip_model.dart';
-// Framework & Template Imports
 import '../utils/api_call_status.dart';
 import '../utils/error_data.dart';
 import '../utils/wrappers/shimmer_wrapper.dart';
@@ -38,10 +37,10 @@ class HomeScreen extends StatelessWidget {
               errorData:
                   errorData ??
                   ErrorData(
-                    title: 'Error',
-                    body: 'An unexpected error occurred.',
+                    title: 'error'.tr,
+                    body: 'unexpected_error'.tr,
                     image: Assets.errorsUnknown,
-                    buttonText: 'Retry',
+                    buttonText: 'retry'.tr,
                   ),
               refresh: controller.loadDashboardData,
             ),
@@ -52,10 +51,10 @@ class HomeScreen extends StatelessWidget {
           return Center(
             child: ErrorCard(
               errorData: ErrorData(
-                title: 'No Trips Assigned',
-                body: 'You have no trips assigned to you today.',
+                title: 'no_trips_assigned'.tr,
+                body: 'no_trips_assigned_desc'.tr,
                 image: Assets.empty,
-                buttonText: 'Refresh',
+                buttonText: 'refresh'.tr,
               ),
               refresh: controller.loadDashboardData,
             ),
@@ -71,18 +70,20 @@ class HomeScreen extends StatelessWidget {
         }
         final driverName = userJson?['fullName'] ?? 'Abebe Bikila';
 
-        String busInfo = 'Bus #104 • ET-12345';
-        String dutyStatus = 'Off Duty';
+        String busInfo = 'bus_route_info_default'.tr;
+        String dutyStatus = 'off_duty'.tr;
         if (!isLoading && activeTrip != null) {
-          busInfo =
-              'Bus ${activeTrip.busIdentifier} • Route ${activeTrip.route.routeNumber}';
-          dutyStatus = activeTrip.status == 'IN_PROGRESS' ? 'On Duty' : 'Ready';
+          busInfo = 'bus_route_info'.trParams({
+            'bus': activeTrip.busIdentifier,
+            'route': activeTrip.route.routeNumber,
+          });
+          dutyStatus = activeTrip.status == 'IN_PROGRESS' ? 'on_duty'.tr : 'ready'.tr;
         }
 
         return Column(
           children: [
             _DriverHeader(
-              driverName: 'Hello, $driverName',
+              driverName: 'hello_driver'.trParams({'driver': driverName}),
               busInfo: busInfo,
               status: dutyStatus,
             ),
@@ -96,7 +97,7 @@ class HomeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _SectionTitle(title: 'Current Assignment'),
+                      _SectionTitle(title: 'current_assignment'.tr),
                       _AssignmentCard(
                         trip: activeTrip,
                         isLoading: isLoading,
@@ -104,22 +105,21 @@ class HomeScreen extends StatelessWidget {
                         isActionLoading: isActionLoading,
                       ),
 
-                      const _SectionTitle(title: "Today's Activity"),
+                      _SectionTitle(title: "todays_activity".tr),
                       _StatsGrid(
                         tripsCompleted: tripsCompleted,
                         passengersTransported: passengersTransported,
                         isLoading: isLoading,
                       ),
 
-                      const _SectionTitle(title: 'Recent Alerts'),
+                      _SectionTitle(title: 'recent_alerts'.tr),
                       _AlertCard(
                         icon: LucideIcons.mapPin,
                         iconColor: Theme.of(context).colorScheme.primary,
                         backgroundColor: const Color(0xFFEFF6FF),
                         borderColor: const Color(0xFFBFDBFE),
-                        title: 'Weraj Request',
-                        message:
-                            'Passenger requesting drop-off at Bole Bridge Stop.',
+                        title: 'weraj_request'.tr,
+                        message: 'weraj_request_desc'.tr,
                         titleColor: const Color(0xFF1E40AF),
                         messageColor: const Color(0xFF3B82F6),
                       ),
@@ -128,8 +128,8 @@ class HomeScreen extends StatelessWidget {
                         iconColor: const Color(0xFFD97706),
                         backgroundColor: const Color(0xFFFFFBEB),
                         borderColor: const Color(0xFFFDE68A),
-                        title: 'System Update',
-                        message: 'Peak hour traffic reported near Meskel Square.',
+                        title: 'system_update'.tr,
+                        message: 'system_update_desc'.tr,
                         titleColor: const Color(0xFFB45309),
                         messageColor: const Color(0xFFD97706),
                       ),
@@ -256,12 +256,14 @@ class _AssignmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String routeNumber =
-        isLoading || trip == null ? 'Route --' : 'Route ${trip!.route.routeNumber}';
+        isLoading || trip == null
+            ? 'route_label_default'.tr
+            : 'route_label'.trParams({'route': trip!.route.routeNumber});
     final String time =
         isLoading || trip == null ? '--:-- --' : _formatTimeOnly(trip!.scheduledFor);
 
-    String fromStop = 'Origin Stop';
-    String toStop = 'Destination Stop';
+    String fromStop = 'starting_stop'.tr;
+    String toStop = 'destination_stop'.tr;
     if (!isLoading && trip != null) {
       final name = trip!.route.name;
       final parts = name.split(RegExp(r'\s+to\s+|\s+To\s+|\s+↔\s+'));
@@ -275,7 +277,7 @@ class _AssignmentCard extends StatelessWidget {
     }
 
     final isStart = trip?.status == 'SCHEDULED';
-    final buttonText = isStart ? 'Start Trip' : 'End Trip';
+    final buttonText = isStart ? 'start_trip'.tr : 'end_trip'.tr;
     final buttonColor =
         isStart ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
 
@@ -318,9 +320,9 @@ class _AssignmentCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'FROM',
-                        style: TextStyle(
+                      Text(
+                        'from_label'.tr.toUpperCase(),
+                        style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF6B7280),
                         ),
@@ -345,9 +347,9 @@ class _AssignmentCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text(
-                        'TO',
-                        style: TextStyle(
+                      Text(
+                        'to_label'.tr.toUpperCase(),
+                        style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF6B7280),
                         ),
@@ -454,7 +456,7 @@ class _StatsGrid extends StatelessWidget {
               iconColor: const Color(0xFF2563EB),
               iconBg: const Color(0xFFDBEAFE),
               value: tripsCompleted.toString(),
-              label: 'Trips Completed',
+              label: 'trips_completed'.tr,
               isLoading: isLoading,
             ),
           ),
@@ -465,7 +467,7 @@ class _StatsGrid extends StatelessWidget {
               iconColor: const Color(0xFF16A34A),
               iconBg: const Color(0xFFDCFCE7),
               value: passengersTransported.toString(),
-              label: 'Passengers',
+              label: 'passengers'.tr,
               isLoading: isLoading,
             ),
           ),

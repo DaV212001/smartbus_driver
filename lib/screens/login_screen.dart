@@ -49,15 +49,15 @@ class LoginScreen extends GetView<AuthController> {
                       context,
                       'PHONE',
                       LucideIcons.phone,
-                      'Phone',
+                      'phone'.tr,
                     ),
                     _buildTypeToggle(
                       context,
                       'EMAIL',
                       LucideIcons.mail,
-                      'Email',
+                      'email'.tr,
                     ),
-                    _buildTypeToggle(context, 'FID', LucideIcons.qrCode, 'FID'),
+                    _buildTypeToggle(context, 'FID', LucideIcons.qrCode, 'fid'.tr),
                   ],
                 ),
               ),
@@ -86,9 +86,9 @@ class LoginScreen extends GetView<AuthController> {
                 return _buildInputField(
                   context: context,
                   controller: controller.fidController,
-                  label: 'FID',
+                  label: 'fid'.tr,
                   icon: LucideIcons.qrCode,
-                  hint: '16-character FID',
+                  hint: 'fid_hint'.tr,
                   suffixIcon: IconButton(
                     icon: const Icon(
                       LucideIcons.scanLine,

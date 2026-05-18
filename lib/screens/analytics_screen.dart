@@ -1,4 +1,3 @@
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -7,33 +6,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../constants/assets.dart';
 import '../controllers/analytics_controller.dart';
 import '../models/trip_model.dart';
-// Framework & Template Imports
 import '../utils/api_call_status.dart';
 import '../utils/error_data.dart';
+import '../utils/templates/loaded_widgets_template.dart';
 import '../utils/wrappers/shimmer_wrapper.dart';
 import '../widgets/cards/error_card.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
-
-  String _formatHeaderDate(DateTime date) {
-    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return "${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}";
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,24 +22,23 @@ class AnalyticsScreen extends StatelessWidget {
     return Obx(() {
       final apiCallStatus = controller.apiCallStatus.value;
       final errorData = controller.errorData.value;
-      final bool isLoading = apiCallStatus == ApiCallStatus.loading;
+      final isLoading = apiCallStatus == ApiCallStatus.loading;
 
       if (apiCallStatus == ApiCallStatus.error) {
         return Scaffold(
-          backgroundColor: const Color(0xFFF7F9FB),
-          body: SafeArea(
-            child: Center(
-              child: ErrorCard(
-                errorData:
-                    errorData ??
-                    ErrorData(
-                      title: 'Error',
-                      body: 'An unexpected error occurred.',
-                      image: Assets.errorsUnknown,
-                      buttonText: 'Retry',
-                    ),
-                refresh: controller.loadAnalytics,
-              ),
+          backgroundColor: Colors.white,
+          appBar: _buildAppBar(controller),
+          body: Center(
+            child: ErrorCard(
+              errorData:
+                  errorData ??
+                  ErrorData(
+                    title: 'error'.tr,
+                    body: 'unexpected_error'.tr,
+                    image: Assets.errorsUnknown,
+                    buttonText: 'retry'.tr,
+                  ),
+              refresh: controller.loadAnalytics,
             ),
           ),
         );
@@ -67,49 +46,62 @@ class AnalyticsScreen extends StatelessWidget {
 
       if (apiCallStatus == ApiCallStatus.empty) {
         return Scaffold(
-          backgroundColor: const Color(0xFFF7F9FB),
-          body: SafeArea(
-            child: Center(
-              child: ErrorCard(
-                errorData: ErrorData(
-                  title: 'No Trip History',
-                  body:
-                      'You have not completed any trips yet to record analytics.',
-                  image: Assets.empty,
-                  buttonText: 'Refresh',
-                ),
-                refresh: controller.loadAnalytics,
+          backgroundColor: Colors.white,
+          appBar: _buildAppBar(controller),
+          body: Center(
+            child: ErrorCard(
+              errorData: ErrorData(
+                title: 'no_trip_history'.tr,
+                body: 'no_trip_history_desc'.tr,
+                image: Assets.empty,
+                buttonText: 'refresh'.tr,
               ),
+              refresh: controller.loadAnalytics,
             ),
           ),
         );
       }
 
-      return Scaffold(
-        backgroundColor: const Color(0xFFF7F9FB),
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: controller.loadAnalytics,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 96),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildStatsGrid(controller, isLoading, context),
-                        const Padding(padding: EdgeInsets.only(top: 16)),
-                        _buildVolumePanel(controller, isLoading),
-                        const Padding(padding: EdgeInsets.only(top: 16)),
-                        _buildTripLogPanel(controller, isLoading),
-                      ],
-                    ),
-                  ),
+      final displayTrips = isLoading
+          ? List.generate(
+              3,
+              (i) => TripModel(
+                id: i.toString(),
+                routeId: (100 + i).toString(),
+                driverId: '300',
+                scheduledFor: DateTime.now(),
+                status: 'COMPLETED',
+                passengerCount: 15 + i * 5,
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+                busIdentifier: 'Bus #10$i',
+                route: RouteModel(
+                  id: (100 + i).toString(),
+                  routeNumber: 'R-0$i',
+                  name: 'Route $i',
                 ),
               ),
+            )
+          : controller.recentTrips;
+
+      final chartTrips = displayTrips.take(7).toList().reversed.toList();
+
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _buildAppBar(controller),
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _TodayStatsSection(
+                tripsCount: controller.todayTripsCount.value,
+                passengersCount: controller.todayPassengersCount.value,
+                tripsDiff: controller.todayTripsCount.value - controller.yesterdayTripsCount.value,
+                passengersDiff: controller.todayPassengersCount.value - controller.yesterdayPassengersCount.value,
+                isLoading: isLoading,
+              ),
+              _ChartSection(chartTrips: chartTrips, isLoading: isLoading),
+              _TripLogSection(displayTrips: displayTrips, isLoading: isLoading),
             ],
           ),
         ),
@@ -117,131 +109,144 @@ class AnalyticsScreen extends StatelessWidget {
     });
   }
 
-  Widget _buildHeader() {
+  PreferredSizeWidget _buildAppBar(AnalyticsController ctrl) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(80),
+      child: Container(
+        padding: const EdgeInsets.only(
+          top: 30,
+          left: 20,
+          right: 20,
+          bottom: 12,
+        ),
+        color: const Color(0xFF0F172A),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'driver_dashboard'.tr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: ctrl.loadAnalytics,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.refresh, size: 18, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayStatsSection extends StatelessWidget {
+  final int tripsCount;
+  final int passengersCount;
+  final int tripsDiff;
+  final int passengersDiff;
+  final bool isLoading;
+
+  const _TodayStatsSection({
+    required this.tripsCount,
+    required this.passengersCount,
+    required this.tripsDiff,
+    required this.passengersDiff,
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Text(
+            'todays_stats'.tr,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0B1A2B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              Text(
-                'Driver dashboard',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF6C7680),
+              Expanded(
+                child: _TodayStatCard(
+                  icon: LucideIcons.bus,
+                  iconColor: const Color(0xFF2563EB),
+                  bgColor: const Color(0xFFEFF6FF),
+                  value: tripsCount.toString(),
+                  label: 'trips_completed_today'.tr,
+                  difference: tripsDiff,
+                  isLoading: isLoading,
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                "Today's Stats",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0B1220),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _TodayStatCard(
+                  icon: LucideIcons.users,
+                  iconColor: const Color(0xFF16A34A),
+                  bgColor: const Color(0xFFF0FDF4),
+                  value: passengersCount.toString(),
+                  label: 'passengers_transported'.tr,
+                  difference: passengersDiff,
+                  isLoading: isLoading,
                 ),
               ),
             ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: const Color(0x14000000)),
-            ),
-            child: Text(
-              _formatHeaderDate(DateTime.now()),
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0B1220),
-              ),
-            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStatsGrid(
-    AnalyticsController controller,
-    bool isLoading,
-    BuildContext context,
-  ) {
-    final todayTrips = controller.todayTripsCount.value;
-    final yesterdayTrips = controller.yesterdayTripsCount.value;
-    final todayPassengers = controller.todayPassengersCount.value;
-    final yesterdayPassengers = controller.yesterdayPassengersCount.value;
+class _TodayStatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color bgColor;
+  final String value;
+  final String label;
+  final int difference;
+  final bool isLoading;
 
-    final tripsDiff = todayTrips - yesterdayTrips;
-    final tripsTrend = tripsDiff > 0
-        ? '+$tripsDiff vs yesterday'
-        : tripsDiff < 0
-        ? '$tripsDiff vs yesterday'
-        : 'Same as yesterday';
-    final tripsTrendColor = tripsDiff >= 0
-        ? const Color(0xFF12A75E)
-        : const Color(0xFFDC2626);
+  const _TodayStatCard({
+    required this.icon,
+    required this.iconColor,
+    required this.bgColor,
+    required this.value,
+    required this.label,
+    required this.difference,
+    required this.isLoading,
+  });
 
-    final passDiff = todayPassengers - yesterdayPassengers;
-    final passTrend = passDiff > 0
-        ? '+$passDiff vs yesterday'
-        : passDiff < 0
-        ? '$passDiff vs yesterday'
-        : 'Same as yesterday';
-    final passTrendColor = passDiff >= 0
-        ? const Color(0xFF12A75E)
-        : const Color(0xFFDC2626);
-
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            context: context,
-            icon: LucideIcons.bus,
-            label: 'Trips completed today',
-            value: todayTrips.toString(),
-            trend: tripsTrend,
-            trendColor: tripsTrendColor,
-            iconColor: const Color(0xFF0B66B2),
-            isLoading: isLoading,
-          ),
-        ),
-        const Padding(padding: EdgeInsets.only(left: 12)),
-        Expanded(
-          child: _buildStatCard(
-            context: context,
-            icon: LucideIcons.users,
-            label: 'Passengers transported',
-            value: todayPassengers.toString(),
-            trend: passTrend,
-            trendColor: passTrendColor,
-            iconColor: const Color(0xFF0B66B2),
-            isLoading: isLoading,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required String trend,
-    required Color trendColor,
-    required Color iconColor,
-    required bool isLoading,
-    required BuildContext context,
-  }) {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0x14000000)),
       ),
       child: ShimmerWrapper(
@@ -249,339 +254,332 @@ class AnalyticsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0F6F2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
-                ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.15,
-                  child: AutoSizeText(
-                    isLoading ? 'vs yesterday' : trend,
-                    minFontSize: 5,
-                    maxLines: 2,
-                    maxFontSize: 11,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: isLoading ? const Color(0xFF6C7680) : trendColor,
-                    ),
-                  ),
-                ),
-              ],
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 16),
             ),
-            const Padding(padding: EdgeInsets.only(top: 10)),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF6C7680),
-                height: 1.3,
-              ),
-            ),
-            const Padding(padding: EdgeInsets.only(top: 4)),
+            const SizedBox(height: 12),
             Text(
               isLoading ? '--' : value,
               style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0B1220),
-                height: 1,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0B1A2B),
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+            ),
+            const SizedBox(height: 8),
+            _buildDiffWidget(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildVolumePanel(AnalyticsController controller, bool isLoading) {
-    final chronologicalTrips = controller.recentTrips.reversed.toList();
-    final chartTrips = chronologicalTrips.length > 7
-        ? chronologicalTrips.sublist(chronologicalTrips.length - 7)
-        : chronologicalTrips;
+  Widget _buildDiffWidget() {
+    if (isLoading) {
+      return Container(
+        width: 60,
+        height: 12,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(4),
+        ),
+      );
+    }
+    if (difference > 0) {
+      return Row(
+        children: [
+          const Icon(Icons.trending_up, color: Color(0xFF16A34A), size: 14),
+          const SizedBox(width: 4),
+          Text(
+            'plus_vs_yesterday'.trParams({'count': difference.toString()}),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF16A34A),
+            ),
+          ),
+        ],
+      );
+    } else if (difference < 0) {
+      return Row(
+        children: [
+          const Icon(Icons.trending_down, color: Color(0xFFDC2626), size: 14),
+          const SizedBox(width: 4),
+          Text(
+            'minus_vs_yesterday'.trParams({'count': difference.toString()}),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFDC2626),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Row(
+        children: [
+          const Icon(Icons.trending_flat, color: Color(0xFF6B7280), size: 14),
+          const SizedBox(width: 4),
+          Text(
+            'same_as_yesterday'.tr,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ],
+      );
+    }
+  }
+}
 
-    int maxPass = 0;
+class _ChartSection extends StatelessWidget {
+  final List<TripModel> chartTrips;
+  final bool isLoading;
+
+  const _ChartSection({required this.chartTrips, required this.isLoading});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'passenger_volume'.tr,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0B1A2B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isLoading
+                ? 'last_trips_default'.tr
+                : 'last_trips'.trParams({'count': chartTrips.length.toString()}),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 200,
+            padding: const EdgeInsets.only(right: 16, top: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0x14000000)),
+            ),
+            child: ShimmerWrapper(
+              isEnabled: isLoading,
+              child:
+                  chartTrips.isEmpty && !isLoading
+                      ? Center(
+                        child: Text(
+                          'no_trip_data_available'.tr,
+                          style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 12,
+                          ),
+                        ),
+                      )
+                      : BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
+                          maxY: _getMaxY(),
+                          barTouchData: BarTouchData(enabled: true),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final idx = value.toInt();
+                                  if (idx >= 0 && idx < chartTrips.length) {
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 6.0),
+                                      child: Text(
+                                        'trip_number'.trParams({'number': (idx + 1).toString()}),
+                                        style: const TextStyle(
+                                          color: Color(0xFF6B7280),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                            leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 28,
+                              ),
+                            ),
+                            topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          barGroups: List.generate(
+                            chartTrips.length,
+                            (index) => BarChartGroupData(
+                              x: index,
+                              barRods: [
+                                BarChartRodData(
+                                  toY:
+                                      chartTrips[index].passengerCount?.toDouble() ??
+                                      0.0,
+                                  color:
+                                      (chartTrips[index].passengerCount ?? 0) > 25
+                                          ? const Color(0xFFEF4444)
+                                          : const Color(0xFF2563EB),
+                                  width: 14,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(4),
+                                    topRight: Radius.circular(4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (!isLoading && chartTrips.isNotEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ChartLegend(color: const Color(0xFF2563EB), label: 'regular_load'.tr),
+                const SizedBox(width: 16),
+                _ChartLegend(color: const Color(0xFFEF4444), label: 'peak_load'.tr),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  double _getMaxY() {
+    double maxVal = 20.0;
     for (var t in chartTrips) {
-      if (t.passengerCount > maxPass) {
-        maxPass = t.passengerCount;
+      final count = t.passengerCount?.toDouble() ?? 0.0;
+      if (count > maxVal) {
+        maxVal = count;
       }
     }
-    final double computedMaxY = maxPass > 25 ? (maxPass + 5).toDouble() : 30.0;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x14000000)),
-      ),
-      child: ShimmerWrapper(
-        isEnabled: isLoading,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Passenger volume',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0B1220),
-                  ),
-                ),
-                Text(
-                  isLoading
-                      ? 'Last -- trips'
-                      : 'Last ${chartTrips.length} trips',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF6C7680),
-                  ),
-                ),
-              ],
-            ),
-            const Padding(padding: EdgeInsets.only(top: 24)),
-            SizedBox(
-              height: 200,
-              child: isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF0B66B2),
-                        ),
-                      ),
-                    )
-                  : chartTrips.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No trip data available',
-                        style: TextStyle(color: Color(0xFF6C7680)),
-                      ),
-                    )
-                  : BarChart(
-                      BarChartData(
-                        alignment: BarChartAlignment.spaceAround,
-                        maxY: computedMaxY,
-                        barTouchData: BarTouchData(enabled: false),
-                        titlesData: FlTitlesData(
-                          show: true,
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                final index = value.toInt();
-                                if (index < 0 || index >= chartTrips.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    'Trip ${index + 1}',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF6C7680),
-                                    ),
-                                  ),
-                                );
-                              },
-                              reservedSize: 28,
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              getTitlesWidget: (value, meta) {
-                                if (value % 10 != 0)
-                                  return const SizedBox.shrink();
-                                return Text(
-                                  value.toInt().toString(),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF6C7680),
-                                  ),
-                                );
-                              },
-                              reservedSize: 28,
-                            ),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                        ),
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          getDrawingHorizontalLine: (value) {
-                            return const FlLine(
-                              color: Color(0xFFE9EEF2),
-                              strokeWidth: 1,
-                            );
-                          },
-                        ),
-                        borderData: FlBorderData(show: false),
-                        barGroups: List.generate(chartTrips.length, (index) {
-                          return BarChartGroupData(
-                            x: index,
-                            barRods: [
-                              BarChartRodData(
-                                toY: chartTrips[index].passengerCount
-                                    .toDouble(),
-                                color: chartTrips[index].isPeakLoad
-                                    ? const Color(0xFFFFB400)
-                                    : const Color(0xFF0B66B2),
-                                width: 26,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(8),
-                                  topRight: Radius.circular(8),
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                      ),
-                    ),
-            ),
-            const Padding(padding: EdgeInsets.only(top: 16)),
-            Row(
-              children: [
-                _buildLegendItem(const Color(0xFF0B66B2), 'Regular load'),
-                const Padding(padding: EdgeInsets.only(left: 12)),
-                _buildLegendItem(const Color(0xFFFFB400), 'Peak load'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    return (maxVal * 1.15).roundToDouble();
   }
+}
 
-  Widget _buildLegendItem(Color color, String label) {
+class _ChartLegend extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _ChartLegend({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
         ),
-        const Padding(padding: EdgeInsets.only(left: 6)),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF6C7680),
-          ),
-        ),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
       ],
     );
   }
+}
 
-  Widget _buildTripLogPanel(AnalyticsController controller, bool isLoading) {
-    final displayTrips = isLoading
-        ? List.generate(
-            3,
-            (index) => TripModel(
-              id: '$index',
-              scheduledFor: DateTime.now(),
-              status: 'COMPLETED',
-              busIdentifier: '104',
-              route: RouteModel(
-                id: '$index',
-                routeNumber: '--',
-                name: 'Placeholder Route',
-              ),
-              passengerCount: 0,
-              isPeakLoad: false,
-              createdAt: DateTime.now(),
-              driverId: '',
-              routeId: '',
-              updatedAt: DateTime.now(),
-            ),
-          )
-        : controller.recentTrips;
+class _TripLogSection extends StatelessWidget {
+  final List<TripModel> displayTrips;
+  final bool isLoading;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x14000000)),
-      ),
+  const _TripLogSection({required this.displayTrips, required this.isLoading});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AnalyticsController>();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Trip log',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B1220),
-                ),
-              ),
-              Text(
-                isLoading
-                    ? 'Showing last -- runs'
-                    : 'Showing last ${displayTrips.length} runs',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF6C7680),
-                ),
-              ),
-            ],
+          Text(
+            'trip_log'.tr,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0B1A2B),
+            ),
           ),
-          const Padding(padding: EdgeInsets.only(top: 16)),
-          displayTrips.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24.0),
-                    child: Text(
-                      'No completed trips recorded',
-                      style: TextStyle(color: Color(0xFF6C7680)),
-                    ),
-                  ),
-                )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: displayTrips.length,
-                  separatorBuilder: (context, index) =>
-                      const Padding(padding: EdgeInsets.only(top: 12)),
-                  itemBuilder: (context, index) {
-                    return _buildTripLogCard(displayTrips[index], isLoading);
-                  },
-                ),
+          const SizedBox(height: 4),
+          Text(
+            isLoading
+                ? 'showing_runs_default'.tr
+                : 'showing_runs'.trParams({'count': displayTrips.length.toString()}),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          LoadedListWidget(
+            apiCallStatus:
+                isLoading ? ApiCallStatus.loading : ApiCallStatus.success,
+            errorData: null,
+            list: displayTrips,
+            onReload: controller.loadAnalytics,
+            onEmpty: Center(
+              child: Text(
+                'no_completed_trips'.tr,
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+              ),
+            ),
+            loadingChild: ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 3,
+              itemBuilder: (c, i) =>
+                  _TripLogCard(trip: displayTrips[i], isLoading: true),
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: displayTrips.length,
+              itemBuilder: (c, i) =>
+                  _TripLogCard(trip: displayTrips[i], isLoading: false),
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  String _formatTripTime(TripModel trip) {
-    if (trip.startedAt == null || trip.endedAt == null) {
-      return 'Scheduled: ${_formatTimeOnly(trip.scheduledFor)}';
-    }
-    return '${_formatTimeOnly(trip.startedAt!)} to ${_formatTimeOnly(trip.endedAt!)}';
-  }
+class _TripLogCard extends StatelessWidget {
+  final TripModel trip;
+  final bool isLoading;
+
+  const _TripLogCard({required this.trip, required this.isLoading});
 
   String _formatTimeOnly(DateTime dt) {
     final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
@@ -590,117 +588,88 @@ class AnalyticsScreen extends StatelessWidget {
     return '${hour.toString().padLeft(2, '0')}:$min $ampm';
   }
 
-  Widget _buildTripLogCard(TripModel trip, bool isLoading) {
+  @override
+  Widget build(BuildContext context) {
+    final String routeInfo =
+        isLoading
+            ? 'route_label_default'.tr + ' · Placeholder Route'
+            : 'route_label'.trParams({'route': trip.route.routeNumber}) + ' · ${trip.route.name}';
+    final String timeInfo =
+        isLoading
+            ? 'scheduled_label'.trParams({'time': '--:-- --'})
+            : 'scheduled_label'.trParams({'time': _formatTimeOnly(trip.scheduledFor)});
+
+    final int passengerCount = trip.passengerCount ?? 0;
+    final isPeak = passengerCount > 25;
+
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0x14000000)),
       ),
       child: ShimmerWrapper(
         isEnabled: isLoading,
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    routeInfo,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    timeInfo,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isLoading
-                            ? 'Route -- · Placeholder Route'
-                            : 'Route ${trip.route.routeNumber} · ${trip.route.name}',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0B1220),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Padding(padding: EdgeInsets.only(top: 4)),
-                      Text(
-                        isLoading
-                            ? 'Scheduled: --:-- --'
-                            : _formatTripTime(trip),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF6C7680),
-                        ),
-                      ),
-                    ],
+                Text(
+                  '$passengerCount ${'passengers'.tr}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
+                const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0F6F2),
-                    borderRadius: BorderRadius.circular(100),
+                    color: isPeak ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    trip.status,
+                    isPeak ? 'peak_load'.tr : 'regular'.tr,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF0B1220),
+                      color: isPeak ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const Padding(padding: EdgeInsets.only(top: 12)),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildMetric(
-                  'Passengers',
-                  isLoading ? '--' : trip.passengerCount.toString(),
-                ),
-                _buildMetric(
-                  'Load Type',
-                  isLoading
-                      ? 'Regular'
-                      : (trip.isPeakLoad ? 'Peak Load' : 'Regular'),
-                  valueColor: !isLoading && trip.isPeakLoad
-                      ? const Color(0xFFFFB400)
-                      : const Color(0xFF0B66B2),
                 ),
               ],
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMetric(String label, String value, {Color? valueColor}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF6C7680),
-          ),
-        ),
-        const Padding(padding: EdgeInsets.only(top: 4)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: valueColor ?? const Color(0xFF0B1220),
-          ),
-        ),
-      ],
     );
   }
 }
