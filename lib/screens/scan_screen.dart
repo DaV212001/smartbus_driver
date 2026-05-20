@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../controllers/scan_controller.dart';
+
+import '../constants/assets.dart';
 import '../controllers/home_controller.dart';
+import '../controllers/scan_controller.dart';
 import '../utils/api_call_status.dart';
+import '../utils/error_data.dart';
 import '../utils/wrappers/shimmer_wrapper.dart';
 import '../widgets/cards/error_card.dart';
-import '../utils/error_data.dart';
-import '../constants/assets.dart';
 
 class TicketScannerScreen extends StatelessWidget {
   const TicketScannerScreen({super.key});
@@ -19,7 +20,7 @@ class TicketScannerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(ScanController());
+    final controller = Get.find<ScanController>();
 
     return Scaffold(
       body: SafeArea(
@@ -118,7 +119,10 @@ class TicketScannerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScannerViewport(BuildContext context, ScanController controller) {
+  Widget _buildScannerViewport(
+    BuildContext context,
+    ScanController controller,
+  ) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.42,
       width: double.infinity,
@@ -129,6 +133,7 @@ class TicketScannerScreen extends StatelessWidget {
           // 1. MobileScanner Camera View
           Positioned.fill(
             child: MobileScanner(
+              controller: controller.scannerController,
               onDetect: (capture) {
                 final List<Barcode> barcodes = capture.barcodes;
                 if (barcodes.isNotEmpty) {
@@ -140,7 +145,7 @@ class TicketScannerScreen extends StatelessWidget {
               },
             ),
           ),
-          
+
           // 2. Translucent dark dim overlay
           Positioned.fill(
             child: Container(color: Colors.black.withOpacity(0.35)),
@@ -149,19 +154,21 @@ class TicketScannerScreen extends StatelessWidget {
           // 3. Mode Toggle Switch Pill
           Positioned(
             top: 16,
-            child: Obx(() => Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(999),
+            child: Obx(
+              () => Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  children: [
+                    _buildModeButton(controller, 'Standard', 'standard'.tr),
+                    _buildModeButton(controller, 'Inspection', 'inspection'.tr),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  _buildModeButton(controller, 'Standard', 'standard'.tr),
-                  _buildModeButton(controller, 'Inspection', 'inspection'.tr),
-                ],
-              ),
-            )),
+            ),
           ),
 
           // 4. QR Scan Target Frame
@@ -178,10 +185,34 @@ class TicketScannerScreen extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                _buildCorner(context, top: -2, left: -2, isTop: true, isLeft: true),
-                _buildCorner(context, top: -2, right: -2, isTop: true, isLeft: false),
-                _buildCorner(context, bottom: -2, left: -2, isTop: false, isLeft: true),
-                _buildCorner(context, bottom: -2, right: -2, isTop: false, isLeft: false),
+                _buildCorner(
+                  context,
+                  top: -2,
+                  left: -2,
+                  isTop: true,
+                  isLeft: true,
+                ),
+                _buildCorner(
+                  context,
+                  top: -2,
+                  right: -2,
+                  isTop: true,
+                  isLeft: false,
+                ),
+                _buildCorner(
+                  context,
+                  bottom: -2,
+                  left: -2,
+                  isTop: false,
+                  isLeft: true,
+                ),
+                _buildCorner(
+                  context,
+                  bottom: -2,
+                  right: -2,
+                  isTop: false,
+                  isLeft: false,
+                ),
               ],
             ),
           ),
@@ -192,9 +223,14 @@ class TicketScannerScreen extends StatelessWidget {
             child: Obx(() {
               final isOffline = controller.isOffline.value;
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: isOffline ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                  color: isOffline
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFF16A34A),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
@@ -224,7 +260,11 @@ class TicketScannerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildModeButton(ScanController controller, String modeKey, String label) {
+  Widget _buildModeButton(
+    ScanController controller,
+    String modeKey,
+    String label,
+  ) {
     final bool isActive = controller.activeMode.value == modeKey;
     return GestureDetector(
       onTap: () => controller.toggleMode(modeKey),
@@ -281,9 +321,15 @@ class TicketScannerScreen extends StatelessWidget {
           ),
           borderRadius: BorderRadius.only(
             topLeft: isTop && isLeft ? const Radius.circular(16) : Radius.zero,
-            topRight: isTop && !isLeft ? const Radius.circular(16) : Radius.zero,
-            bottomLeft: !isTop && isLeft ? const Radius.circular(16) : Radius.zero,
-            bottomRight: !isTop && !isLeft ? const Radius.circular(16) : Radius.zero,
+            topRight: isTop && !isLeft
+                ? const Radius.circular(16)
+                : Radius.zero,
+            bottomLeft: !isTop && isLeft
+                ? const Radius.circular(16)
+                : Radius.zero,
+            bottomRight: !isTop && !isLeft
+                ? const Radius.circular(16)
+                : Radius.zero,
           ),
         ),
       ),
@@ -291,6 +337,7 @@ class TicketScannerScreen extends StatelessWidget {
   }
 
   Widget _buildHoldingFeedback(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -299,22 +346,22 @@ class TicketScannerScreen extends StatelessWidget {
           width: 64,
           height: 64,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
             Icons.qr_code_2,
-            color: Theme.of(context).colorScheme.primary,
+            color: theme.colorScheme.primary,
             size: 36,
           ),
         ),
         const Padding(padding: EdgeInsets.only(top: 16)),
         Text(
           'ready_to_scan'.tr,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0F172A),
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
         const Padding(padding: EdgeInsets.only(top: 6)),
@@ -332,6 +379,7 @@ class TicketScannerScreen extends StatelessWidget {
   }
 
   Widget _buildLoadingFeedback(BuildContext context) {
+    final theme = Theme.of(context);
     return ShimmerWrapper(
       isEnabled: true,
       child: Column(
@@ -341,8 +389,8 @@ class TicketScannerScreen extends StatelessWidget {
               Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(
-                  color: Colors.grey,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -351,9 +399,17 @@ class TicketScannerScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(width: 120, height: 16, color: Colors.grey),
+                    Container(
+                      width: 120,
+                      height: 16,
+                      color: theme.dividerColor,
+                    ),
                     const Padding(padding: EdgeInsets.only(top: 6)),
-                    Container(width: 180, height: 12, color: Colors.grey),
+                    Container(
+                      width: 180,
+                      height: 12,
+                      color: theme.dividerColor,
+                    ),
                   ],
                 ),
               ),
@@ -364,7 +420,7 @@ class TicketScannerScreen extends StatelessWidget {
             width: double.infinity,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.grey,
+              color: theme.dividerColor,
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -373,7 +429,11 @@ class TicketScannerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSuccessFeedback(BuildContext context, ScanController controller) {
+  Widget _buildSuccessFeedback(
+    BuildContext context,
+    ScanController controller,
+  ) {
+    final theme = Theme.of(context);
     final result = controller.lastScanResult.value!;
     final isInspection = result.result == 'INSPECTION_ONLY';
     final ticketId = result.ticketId ?? '----';
@@ -392,7 +452,11 @@ class TicketScannerScreen extends StatelessWidget {
                 color: successColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle, color: successColor, size: 30),
+              child: const Icon(
+                Icons.check_circle,
+                color: successColor,
+                size: 30,
+              ),
             ),
             const Padding(padding: EdgeInsets.only(left: 12)),
             Expanded(
@@ -401,8 +465,8 @@ class TicketScannerScreen extends StatelessWidget {
                 children: [
                   Text(
                     isInspection ? 'inspection_verified'.tr : 'valid_ticket'.tr,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -426,7 +490,9 @@ class TicketScannerScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: mutedColor,
+            color: theme.brightness == Brightness.dark
+                ? theme.scaffoldBackgroundColor
+                : mutedColor,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
@@ -439,11 +505,14 @@ class TicketScannerScreen extends StatelessWidget {
                     label: 'type'.tr,
                     value: isInspection ? 'inspection'.tr : 'standard'.tr,
                   ),
-                  _MetaItem(label: 'scan_time'.tr, value: controller.scannedAtString.value),
+                  _MetaItem(
+                    label: 'scan_time'.tr,
+                    value: controller.scannedAtString.value,
+                  ),
                 ],
               ),
               const Padding(padding: EdgeInsets.only(top: 12)),
-              const Divider(color: Color(0x14000000), height: 1),
+              Divider(color: theme.dividerColor, height: 1),
               const Padding(padding: EdgeInsets.only(top: 12)),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -453,15 +522,20 @@ class TicketScannerScreen extends StatelessWidget {
                     children: [
                       Text(
                         'ticket_id_title'.tr,
-                        style: const TextStyle(fontSize: 10, color: mutedForegroundColor),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: mutedForegroundColor,
+                        ),
                       ),
                       const Padding(padding: EdgeInsets.only(top: 2)),
                       Text(
-                        ticketId.length > 18 ? '${ticketId.substring(0, 18)}...' : ticketId,
-                        style: const TextStyle(
+                        ticketId.length > 18
+                            ? '${ticketId.substring(0, 18)}...'
+                            : ticketId,
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
+                          color: theme.textTheme.bodyLarge?.color,
                         ),
                       ),
                     ],
@@ -508,7 +582,8 @@ class TicketScannerScreen extends StatelessWidget {
     return Column(
       children: [
         ErrorCard(
-          errorData: error ??
+          errorData:
+              error ??
               ErrorData(
                 title: 'scan_failed'.tr,
                 body: 'scan_failed_desc'.tr,
@@ -530,6 +605,7 @@ class _MetaItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -544,10 +620,10 @@ class _MetaItem extends StatelessWidget {
         const Padding(padding: EdgeInsets.only(top: 4)),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
       ],

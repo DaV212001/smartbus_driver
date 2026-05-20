@@ -18,6 +18,7 @@ class AnalyticsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(AnalyticsController());
+    final theme = Theme.of(context);
 
     return Obx(() {
       final apiCallStatus = controller.apiCallStatus.value;
@@ -26,8 +27,8 @@ class AnalyticsScreen extends StatelessWidget {
 
       if (apiCallStatus == ApiCallStatus.error) {
         return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: _buildAppBar(controller),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: _buildAppBar(context, controller),
           body: Center(
             child: ErrorCard(
               errorData:
@@ -46,8 +47,8 @@ class AnalyticsScreen extends StatelessWidget {
 
       if (apiCallStatus == ApiCallStatus.empty) {
         return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: _buildAppBar(controller),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: _buildAppBar(context, controller),
           body: Center(
             child: ErrorCard(
               errorData: ErrorData(
@@ -78,17 +79,18 @@ class AnalyticsScreen extends StatelessWidget {
                 route: RouteModel(
                   id: (100 + i).toString(),
                   routeNumber: 'R-0$i',
-                  name: 'Route $i',
+                  nameEn: 'Route $i',
+                  nameAm: 'Route $i',
                 ),
               ),
             )
           : controller.recentTrips;
 
-      final chartTrips = displayTrips.take(7).toList().reversed.toList();
+      final chartTrips = controller.recentTrips;
 
       return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(controller),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: _buildAppBar(context, controller),
         body: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,8 +98,12 @@ class AnalyticsScreen extends StatelessWidget {
               _TodayStatsSection(
                 tripsCount: controller.todayTripsCount.value,
                 passengersCount: controller.todayPassengersCount.value,
-                tripsDiff: controller.todayTripsCount.value - controller.yesterdayTripsCount.value,
-                passengersDiff: controller.todayPassengersCount.value - controller.yesterdayPassengersCount.value,
+                tripsDiff:
+                    controller.todayTripsCount.value -
+                    controller.yesterdayTripsCount.value,
+                passengersDiff:
+                    controller.todayPassengersCount.value -
+                    controller.yesterdayPassengersCount.value,
                 isLoading: isLoading,
               ),
               _ChartSection(chartTrips: chartTrips, isLoading: isLoading),
@@ -109,7 +115,11 @@ class AnalyticsScreen extends StatelessWidget {
     });
   }
 
-  PreferredSizeWidget _buildAppBar(AnalyticsController ctrl) {
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    AnalyticsController ctrl,
+  ) {
+    final theme = Theme.of(context);
     return PreferredSize(
       preferredSize: const Size.fromHeight(80),
       child: Container(
@@ -119,7 +129,7 @@ class AnalyticsScreen extends StatelessWidget {
           right: 20,
           bottom: 12,
         ),
-        color: const Color(0xFF0F172A),
+        color: theme.colorScheme.primary,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -174,6 +184,7 @@ class _TodayStatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Column(
@@ -181,10 +192,10 @@ class _TodayStatsSection extends StatelessWidget {
         children: [
           Text(
             'todays_stats'.tr,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0B1A2B),
+              color: theme.textTheme.titleMedium?.color,
             ),
           ),
           const SizedBox(height: 12),
@@ -242,12 +253,13 @@ class _TodayStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x14000000)),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: ShimmerWrapper(
         isEnabled: isLoading,
@@ -257,16 +269,21 @@ class _TodayStatCard extends StatelessWidget {
             Container(
               width: 32,
               height: 32,
-              decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: theme.brightness == Brightness.dark
+                    ? iconColor.withOpacity(0.12)
+                    : bgColor,
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: iconColor, size: 16),
             ),
             const SizedBox(height: 12),
             Text(
               isLoading ? '--' : value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0B1A2B),
+                color: theme.textTheme.bodyLarge?.color,
               ),
             ),
             const SizedBox(height: 4),
@@ -274,23 +291,27 @@ class _TodayStatCard extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.textTheme.bodySmall?.color,
+              ),
             ),
             const SizedBox(height: 8),
-            _buildDiffWidget(),
+            _buildDiffWidget(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDiffWidget() {
+  Widget _buildDiffWidget(BuildContext context) {
+    final theme = Theme.of(context);
     if (isLoading) {
       return Container(
         width: 60,
         height: 12,
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: theme.dividerColor,
           borderRadius: BorderRadius.circular(4),
         ),
       );
@@ -328,14 +349,19 @@ class _TodayStatCard extends StatelessWidget {
     } else {
       return Row(
         children: [
-          const Icon(Icons.trending_flat, color: Color(0xFF6B7280), size: 14),
+          Icon(
+            Icons.trending_flat,
+            color: theme.textTheme.bodySmall?.color ?? const Color(0xFF6B7280),
+            size: 14,
+          ),
           const SizedBox(width: 4),
           Text(
             'same_as_yesterday'.tr,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
+              color:
+                  theme.textTheme.bodySmall?.color ?? const Color(0xFF6B7280),
             ),
           ),
         ],
@@ -352,6 +378,7 @@ class _ChartSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
       child: Column(
@@ -359,108 +386,115 @@ class _ChartSection extends StatelessWidget {
         children: [
           Text(
             'passenger_volume'.tr,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0B1A2B),
+              color: theme.textTheme.titleMedium?.color,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             isLoading
                 ? 'last_trips_default'.tr
-                : 'last_trips'.trParams({'count': chartTrips.length.toString()}),
-            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                : 'last_trips'.trParams({
+                    'count': chartTrips.length.toString(),
+                  }),
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.textTheme.bodySmall?.color,
+            ),
           ),
           const SizedBox(height: 16),
           Container(
             height: 200,
             padding: const EdgeInsets.only(right: 16, top: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.cardColor,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0x14000000)),
+              border: Border.all(color: theme.dividerColor),
             ),
             child: ShimmerWrapper(
               isEnabled: isLoading,
-              child:
-                  chartTrips.isEmpty && !isLoading
-                      ? Center(
-                        child: Text(
-                          'no_trip_data_available'.tr,
-                          style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 12,
+              child: chartTrips.isEmpty && !isLoading
+                  ? Center(
+                      child: Text(
+                        'no_trip_data_available'.tr,
+                        style: TextStyle(
+                          color: theme.textTheme.bodySmall?.color,
+                          fontSize: 12,
+                        ),
+                      ),
+                    )
+                  : BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: _getMaxY(),
+                        barTouchData: BarTouchData(enabled: true),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final idx = value.toInt();
+                                if (idx >= 0 && idx < chartTrips.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6.0),
+                                    child: Text(
+                                      'trip_number'.trParams({
+                                        'number': (idx + 1).toString(),
+                                      }),
+                                      style: TextStyle(
+                                        color: theme.textTheme.bodySmall?.color,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const Text('');
+                              },
+                            ),
+                          ),
+                          leftTitles: const AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 28,
+                            ),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
                           ),
                         ),
-                      )
-                      : BarChart(
-                        BarChartData(
-                          alignment: BarChartAlignment.spaceAround,
-                          maxY: _getMaxY(),
-                          barTouchData: BarTouchData(enabled: true),
-                          titlesData: FlTitlesData(
-                            show: true,
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  final idx = value.toInt();
-                                  if (idx >= 0 && idx < chartTrips.length) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 6.0),
-                                      child: Text(
-                                        'trip_number'.trParams({'number': (idx + 1).toString()}),
-                                        style: const TextStyle(
-                                          color: Color(0xFF6B7280),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return const Text('');
-                                },
-                              ),
-                            ),
-                            leftTitles: const AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 28,
-                              ),
-                            ),
-                            topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                          ),
-                          borderData: FlBorderData(show: false),
-                          barGroups: List.generate(
-                            chartTrips.length,
-                            (index) => BarChartGroupData(
-                              x: index,
-                              barRods: [
-                                BarChartRodData(
-                                  toY:
-                                      chartTrips[index].passengerCount?.toDouble() ??
-                                      0.0,
-                                  color:
-                                      (chartTrips[index].passengerCount ?? 0) > 25
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF2563EB),
-                                  width: 14,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(4),
-                                    topRight: Radius.circular(4),
-                                  ),
+                        borderData: FlBorderData(show: false),
+                        barGroups: List.generate(
+                          chartTrips.length,
+                          (index) => BarChartGroupData(
+                            x: index,
+                            barRods: [
+                              BarChartRodData(
+                                toY:
+                                    chartTrips[index].passengerCount
+                                        ?.toDouble() ??
+                                    0.0,
+                                color:
+                                    (chartTrips[index].passengerCount ?? 0) > 25
+                                    ? const Color(0xFFEF4444)
+                                    : const Color(0xFF2563EB),
+                                width: 14,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(4),
+                                  topRight: Radius.circular(4),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                    ),
             ),
           ),
           const SizedBox(height: 12),
@@ -468,9 +502,15 @@ class _ChartSection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _ChartLegend(color: const Color(0xFF2563EB), label: 'regular_load'.tr),
+                _ChartLegend(
+                  color: const Color(0xFF2563EB),
+                  label: 'regular_load'.tr,
+                ),
                 const SizedBox(width: 16),
-                _ChartLegend(color: const Color(0xFFEF4444), label: 'peak_load'.tr),
+                _ChartLegend(
+                  color: const Color(0xFFEF4444),
+                  label: 'peak_load'.tr,
+                ),
               ],
             ),
         ],
@@ -498,15 +538,25 @@ class _ChartLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: theme.textTheme.bodySmall?.color,
+          ),
+        ),
       ],
     );
   }
@@ -520,6 +570,7 @@ class _TripLogSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final controller = Get.find<AnalyticsController>();
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -528,30 +579,39 @@ class _TripLogSection extends StatelessWidget {
         children: [
           Text(
             'trip_log'.tr,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0B1A2B),
+              color: theme.textTheme.titleMedium?.color,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             isLoading
                 ? 'showing_runs_default'.tr
-                : 'showing_runs'.trParams({'count': displayTrips.length.toString()}),
-            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                : 'showing_runs'.trParams({
+                    'count': displayTrips.length.toString(),
+                  }),
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.textTheme.bodySmall?.color,
+            ),
           ),
           const SizedBox(height: 16),
           LoadedListWidget(
-            apiCallStatus:
-                isLoading ? ApiCallStatus.loading : ApiCallStatus.success,
+            apiCallStatus: isLoading
+                ? ApiCallStatus.loading
+                : ApiCallStatus.success,
             errorData: null,
             list: displayTrips,
             onReload: controller.loadAnalytics,
             onEmpty: Center(
               child: Text(
                 'no_completed_trips'.tr,
-                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+                style: TextStyle(
+                  color: theme.textTheme.bodySmall?.color,
+                  fontSize: 12,
+                ),
               ),
             ),
             loadingChild: ListView.builder(
@@ -590,14 +650,16 @@ class _TripLogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String routeInfo =
-        isLoading
-            ? 'route_label_default'.tr + ' · Placeholder Route'
-            : 'route_label'.trParams({'route': trip.route.routeNumber}) + ' · ${trip.route.name}';
-    final String timeInfo =
-        isLoading
-            ? 'scheduled_label'.trParams({'time': '--:-- --'})
-            : 'scheduled_label'.trParams({'time': _formatTimeOnly(trip.scheduledFor)});
+    final theme = Theme.of(context);
+    final String routeInfo = isLoading
+        ? 'route_label_default'.tr + ' · Placeholder Route'
+        : 'route_label'.trParams({'route': trip.route.routeNumber}) +
+              ' · ${trip.route.name}';
+    final String timeInfo = isLoading
+        ? 'scheduled_label'.trParams({'time': '--:-- --'})
+        : 'scheduled_label'.trParams({
+            'time': _formatTimeOnly(trip.scheduledFor),
+          });
 
     final int passengerCount = trip.passengerCount ?? 0;
     final isPeak = passengerCount > 25;
@@ -606,9 +668,9 @@ class _TripLogCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x14000000)),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: ShimmerWrapper(
         isEnabled: isLoading,
@@ -621,10 +683,10 @@ class _TripLogCard extends StatelessWidget {
                 children: [
                   Text(
                     routeInfo,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF0F172A),
+                      color: theme.textTheme.bodyLarge?.color,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -632,7 +694,10 @@ class _TripLogCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     timeInfo,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.textTheme.bodySmall?.color,
+                    ),
                   ),
                 ],
               ),
@@ -643,17 +708,22 @@ class _TripLogCard extends StatelessWidget {
               children: [
                 Text(
                   '$passengerCount ${'passengers'.tr}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: isPeak ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+                    color: isPeak
+                        ? theme.colorScheme.error.withOpacity(0.12)
+                        : const Color(0xFF22C55E).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -661,7 +731,9 @@ class _TripLogCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: isPeak ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                      color: isPeak
+                          ? theme.colorScheme.error
+                          : const Color(0xFF16A34A),
                     ),
                   ),
                 ),

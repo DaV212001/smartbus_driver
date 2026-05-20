@@ -1,22 +1,33 @@
 import 'dart:convert';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+import '../constants/assets.dart';
+import '../controllers/home_controller.dart';
 import '../services/local_queue_service.dart';
 import '../utils/api_call_status.dart';
-import '../controllers/home_controller.dart';
 import '../utils/error_data.dart';
 import '../utils/templates/dio_template.dart';
-import '../constants/assets.dart';
 
-class ScanController extends GetxController {
+class ScanController extends GetxController with WidgetsBindingObserver {
   final LocalQueueService _queueService = LocalQueueService();
   final Connectivity _connectivity = Connectivity();
 
   var isOffline = false.obs;
   var isSyncing = false.obs;
   var activeMode = 'Standard'.obs; // 'Standard' or 'Inspection'
-  
+  var isScanTabVisible = false.obs;
+
+  // Camera Controller
+  final MobileScannerController scannerController = MobileScannerController(
+    autoStart: false,
+  );
+  bool _isCameraRunning = false;
+
   // State for last scanned ticket
   var apiCallStatus = ApiCallStatus.holding.obs;
   var errorData = Rxn<ErrorData>();
@@ -24,31 +35,93 @@ class ScanController extends GetxController {
   var scannedAtString = ''.obs;
 
   // Let's keep a shared secret key
-  final String _sharedSecret = 'super_secret_qr_signing_secret_key';
+  final String _sharedSecret = 'f07a4050db962514e030c4c981673a71';
   late final LocalTicketValidator _validator;
 
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
     _validator = LocalTicketValidator(_sharedSecret);
-    
+
     // Check initial connectivity
     _connectivity.checkConnectivity().then((results) {
-      isOffline.value = results.isEmpty || results.first == ConnectivityResult.none;
+      isOffline.value =
+          results.isEmpty || results.first == ConnectivityResult.none;
       if (!isOffline.value) {
         triggerBatchSync();
       }
     });
 
     // Listen to connectivity changes
-    _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
+    _connectivity.onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
       final wasOffline = isOffline.value;
-      isOffline.value = results.isEmpty || results.first == ConnectivityResult.none;
+      isOffline.value =
+          results.isEmpty || results.first == ConnectivityResult.none;
       if (!isOffline.value && wasOffline) {
         triggerBatchSync();
       }
     });
   }
+
+  @override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
+    scannerController.dispose();
+    super.onClose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _stopCameraInternal();
+    }
+  }
+
+  void onTabVisibilityChanged(bool visible) {
+    isScanTabVisible.value = visible;
+    _updateCameraState();
+  }
+
+  void _updateCameraState() {
+    if (isScanTabVisible.value &&
+        apiCallStatus.value == ApiCallStatus.holding) {
+      _startCameraInternal();
+    } else {
+      _stopCameraInternal();
+    }
+  }
+
+  Future<void> _startCameraInternal() async {
+    if (_isCameraRunning) return;
+    try {
+      _isCameraRunning = true;
+      await scannerController.start();
+    } catch (e) {
+      _isCameraRunning = false;
+      debugPrint('Error starting camera: $e');
+    }
+  }
+
+  Future<void> _stopCameraInternal() async {
+    if (!_isCameraRunning) return;
+    try {
+      _isCameraRunning = false;
+      await scannerController.stop();
+    } catch (e) {
+      debugPrint('Error stopping camera: $e');
+    }
+  }
+
+  @Deprecated('Use onTabVisibilityChanged instead')
+  void startCamera() => onTabVisibilityChanged(true);
+
+  @Deprecated('Use onTabVisibilityChanged instead')
+  void stopCamera() => onTabVisibilityChanged(false);
 
   void toggleMode(String mode) {
     activeMode.value = mode;
@@ -58,12 +131,17 @@ class ScanController extends GetxController {
     // If already loading/validating, ignore double scanner triggers
     if (apiCallStatus.value == ApiCallStatus.loading) return;
 
+    // Stop camera immediately once a code is detected to save resources and avoid double scans
+    _stopCameraInternal();
+
     apiCallStatus.value = ApiCallStatus.loading;
     errorData.value = null;
     lastScanResult.value = null;
 
     final now = DateTime.now();
-    final hour = now.hour == 0 ? 12 : (now.hour > 12 ? now.hour - 12 : now.hour);
+    final hour = now.hour == 0
+        ? 12
+        : (now.hour > 12 ? now.hour - 12 : now.hour);
     final min = now.minute.toString().padLeft(2, '0');
     final ampm = now.hour >= 12 ? 'PM' : 'AM';
     scannedAtString.value = '${hour.toString().padLeft(2, '0')}:$min $ampm';
@@ -107,11 +185,12 @@ class ScanController extends GetxController {
     if (!localCheck.isValid) {
       // Local verification failed
       apiCallStatus.value = ApiCallStatus.error;
-      
+
       String errImage = Assets.errorsUnknown;
       if (localCheck.result == 'INVALID_ROUTE') {
         errImage = Assets.errorsNotFound;
-      } else if (localCheck.result == 'EXPIRED' || localCheck.result == 'ALREADY_USED') {
+      } else if (localCheck.result == 'EXPIRED' ||
+          localCheck.result == 'ALREADY_USED') {
         errImage = Assets.errorsForbidden;
       }
 
@@ -154,7 +233,9 @@ class ScanController extends GetxController {
         final data = response.data;
         final resultData = OfflineValidationResult(
           result: data['result'] ?? 'VALID',
-          message: activeMode.value == 'Inspection' ? 'Inspection valid.' : 'Ticket validation successful.',
+          message: activeMode.value == 'Inspection'
+              ? 'Inspection valid.'
+              : 'Ticket validation successful.',
           ticketId: localCheck.ticketId,
           payload: localCheck.payload,
         );
@@ -218,9 +299,7 @@ class ScanController extends GetxController {
 
       await DioService.dioPost(
         path: '/v1/sync/validations',
-        data: {
-          'scans': batchScans,
-        },
+        data: {'scans': batchScans},
         onSuccess: (response) async {
           await _queueService.clearQueueItems(batchSize);
           isSyncing.value = false;
@@ -241,5 +320,6 @@ class ScanController extends GetxController {
     apiCallStatus.value = ApiCallStatus.holding;
     errorData.value = null;
     lastScanResult.value = null;
+    _updateCameraState();
   }
 }

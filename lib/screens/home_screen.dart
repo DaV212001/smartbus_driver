@@ -20,6 +20,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(HomeController());
+    var theme = Theme.of(context);
 
     return Scaffold(
       body: Obx(() {
@@ -77,7 +78,9 @@ class HomeScreen extends StatelessWidget {
             'bus': activeTrip.busIdentifier,
             'route': activeTrip.route.routeNumber,
           });
-          dutyStatus = activeTrip.status == 'IN_PROGRESS' ? 'on_duty'.tr : 'ready'.tr;
+          dutyStatus = activeTrip.status == 'IN_PROGRESS'
+              ? 'on_duty'.tr
+              : 'ready'.tr;
         }
 
         return Column(
@@ -112,27 +115,97 @@ class HomeScreen extends StatelessWidget {
                         isLoading: isLoading,
                       ),
 
-                      _SectionTitle(title: 'recent_alerts'.tr),
-                      _AlertCard(
-                        icon: LucideIcons.mapPin,
-                        iconColor: Theme.of(context).colorScheme.primary,
-                        backgroundColor: const Color(0xFFEFF6FF),
-                        borderColor: const Color(0xFFBFDBFE),
-                        title: 'weraj_request'.tr,
-                        message: 'weraj_request_desc'.tr,
-                        titleColor: const Color(0xFF1E40AF),
-                        messageColor: const Color(0xFF3B82F6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _SectionTitle(title: 'recent_alerts'.tr),
+                          Obx(() {
+                            if (controller.notifications.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                right: 20,
+                                top: 24,
+                                bottom: 12,
+                              ),
+                              child: TextButton(
+                                onPressed: controller.clearAllNotifications,
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  'clear_all'.tr,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ],
                       ),
-                      _AlertCard(
-                        icon: LucideIcons.alertTriangle,
-                        iconColor: const Color(0xFFD97706),
-                        backgroundColor: const Color(0xFFFFFBEB),
-                        borderColor: const Color(0xFFFDE68A),
-                        title: 'system_update'.tr,
-                        message: 'system_update_desc'.tr,
-                        titleColor: const Color(0xFFB45309),
-                        messageColor: const Color(0xFFD97706),
-                      ),
+                      Obx(() {
+                        if (controller.notifications.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Text(
+                              'no_recent_alerts'.tr,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.color,
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: controller.notifications.length > 5
+                              ? 5
+                              : controller.notifications.length,
+                          itemBuilder: (context, index) {
+                            final notification =
+                                controller.notifications[index];
+                            return InkWell(
+                              onTap: () => controller.markAsRead(index),
+                              child: _AlertCard(
+                                icon: LucideIcons.bell,
+                                iconColor: notification['isRead'] == true
+                                    ? Colors.grey
+                                    : Theme.of(context).colorScheme.primary,
+                                backgroundColor: notification['isRead'] == true
+                                    ? Colors.grey.withOpacity(0.05)
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.05),
+                                borderColor: notification['isRead'] == true
+                                    ? Colors.grey.withOpacity(0.1)
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.1),
+                                title: notification['title'] ?? '',
+                                message: notification['body'] ?? '',
+                                titleColor: notification['isRead'] == true
+                                    ? Colors.grey
+                                    : Theme.of(context).colorScheme.primary,
+                                messageColor:
+                                    Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.color ??
+                                    Colors.black,
+                              ),
+                            );
+                          },
+                        );
+                      }),
                     ],
                   ),
                 ),
@@ -218,14 +291,15 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 12),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF6B7280),
+          color: theme.textTheme.bodySmall?.color ?? const Color(0xFF6B7280),
           letterSpacing: 0.5,
         ),
       ),
@@ -255,12 +329,13 @@ class _AssignmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String routeNumber =
-        isLoading || trip == null
-            ? 'route_label_default'.tr
-            : 'route_label'.trParams({'route': trip!.route.routeNumber});
-    final String time =
-        isLoading || trip == null ? '--:-- --' : _formatTimeOnly(trip!.scheduledFor);
+    final theme = Theme.of(context);
+    final String routeNumber = isLoading || trip == null
+        ? 'route_label_default'.tr
+        : 'route_label'.trParams({'route': trip!.route.routeNumber});
+    final String time = isLoading || trip == null
+        ? '--:-- --'
+        : _formatTimeOnly(trip!.scheduledFor);
 
     String fromStop = 'starting_stop'.tr;
     String toStop = 'destination_stop'.tr;
@@ -278,16 +353,17 @@ class _AssignmentCard extends StatelessWidget {
 
     final isStart = trip?.status == 'SCHEDULED';
     final buttonText = isStart ? 'start_trip'.tr : 'end_trip'.tr;
-    final buttonColor =
-        isStart ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
+    final buttonColor = isStart
+        ? const Color(0xFF16A34A)
+        : const Color(0xFFDC2626);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x14000000)),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: ShimmerWrapper(
         isEnabled: isLoading,
@@ -301,14 +377,14 @@ class _AssignmentCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
                 Text(
                   time,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF6B7280),
+                    color: theme.textTheme.bodySmall?.color,
                   ),
                 ),
               ],
@@ -322,25 +398,28 @@ class _AssignmentCard extends StatelessWidget {
                     children: [
                       Text(
                         'from_label'.tr.toUpperCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF6B7280),
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                       const Padding(padding: EdgeInsets.only(top: 4)),
                       Text(
                         fromStop,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
+                          color: theme.textTheme.bodyLarge?.color,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   LucideIcons.arrowRight,
-                  color: Color(0xFF94A3B8),
+                  color:
+                      theme.textTheme.bodySmall?.color ??
+                      const Color(0xFF94A3B8),
                   size: 20,
                 ),
                 Expanded(
@@ -349,17 +428,18 @@ class _AssignmentCard extends StatelessWidget {
                     children: [
                       Text(
                         'to_label'.tr.toUpperCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF6B7280),
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                       const Padding(padding: EdgeInsets.only(top: 4)),
                       Text(
                         toStop,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
+                          color: theme.textTheme.bodyLarge?.color,
                         ),
                       ),
                     ],
@@ -370,19 +450,18 @@ class _AssignmentCard extends StatelessWidget {
             const Padding(padding: EdgeInsets.only(top: 20)),
             isLoading
                 ? Container(
-                  width: double.infinity,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                )
+                    width: double.infinity,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  )
                 : SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child:
-                      isActionLoading
-                          ? Center(
+                    width: double.infinity,
+                    height: 48,
+                    child: isActionLoading
+                        ? Center(
                             child: LoadingAnimatedButton(
                               width: MediaQuery.of(context).size.width - 80,
                               height: 48,
@@ -400,7 +479,7 @@ class _AssignmentCard extends StatelessWidget {
                               ),
                             ),
                           )
-                          : ElevatedButton.icon(
+                        : ElevatedButton.icon(
                             onPressed: onAction,
                             icon: Icon(
                               isStart
@@ -425,7 +504,7 @@ class _AssignmentCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                ),
+                  ),
           ],
         ),
       ),
@@ -496,12 +575,13 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0x14000000)),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: ShimmerWrapper(
         isEnabled: isLoading,
@@ -511,22 +591,30 @@ class _StatCard extends StatelessWidget {
             Container(
               width: 32,
               height: 32,
-              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: theme.brightness == Brightness.dark
+                    ? iconColor.withOpacity(0.12)
+                    : iconBg,
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: iconColor, size: 18),
             ),
             const Padding(padding: EdgeInsets.only(top: 8)),
             Text(
               isLoading ? '--' : value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0B1A2B),
+                color: theme.textTheme.bodyLarge?.color,
               ),
             ),
             const Padding(padding: EdgeInsets.only(top: 4)),
             Text(
               label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.textTheme.bodySmall?.color,
+              ),
             ),
           ],
         ),
@@ -558,13 +646,23 @@ class _AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final resolvedBg = isDark ? iconColor.withOpacity(0.08) : backgroundColor;
+    final resolvedBorder = isDark ? iconColor.withOpacity(0.24) : borderColor;
+    final resolvedTitle = isDark ? iconColor.withOpacity(0.9) : titleColor;
+    final resolvedMessage = isDark
+        ? theme.textTheme.bodyMedium?.color
+        : messageColor;
+
     return Container(
       margin: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: resolvedBg,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: resolvedBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,7 +678,7 @@ class _AlertCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: titleColor,
+                    color: resolvedTitle,
                   ),
                 ),
                 const Padding(padding: EdgeInsets.only(top: 2)),
@@ -588,7 +686,7 @@ class _AlertCard extends StatelessWidget {
                   message,
                   style: TextStyle(
                     fontSize: 13,
-                    color: messageColor,
+                    color: resolvedMessage,
                     height: 1.4,
                   ),
                 ),

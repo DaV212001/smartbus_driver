@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+
 class TripModel {
   final String id;
   final String routeId;
@@ -152,7 +154,12 @@ class TripModel {
       endedAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 10)),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r1', routeNumber: '12', name: 'Piazza ↔ Bole'),
+      route: RouteModel(
+        id: 'r1',
+        routeNumber: '12',
+        nameEn: 'Piazza ↔ Bole',
+        nameAm: 'Piazza ↔ Bole',
+      ),
       passengerCount: 18,
     ),
     TripModel(
@@ -166,7 +173,12 @@ class TripModel {
       endedAt: DateTime.now().subtract(const Duration(hours: 3, minutes: 15)),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r1', routeNumber: '12', name: 'Bole ↔ Piazza'),
+      route: RouteModel(
+        id: 'r1',
+        routeNumber: '12',
+        nameEn: 'Bole ↔ Piazza',
+        nameAm: 'Bole ↔ Piazza',
+      ),
       passengerCount: 22,
     ),
     TripModel(
@@ -183,7 +195,8 @@ class TripModel {
       route: RouteModel(
         id: 'r2',
         routeNumber: '34',
-        name: 'Mexico ↔ Megenagna',
+        nameEn: 'Mexico ↔ Megenagna',
+        nameAm: 'Mexico ↔ Megenagna',
       ),
       passengerCount: 26, // Dynamic Peak Load for today
     ),
@@ -201,7 +214,8 @@ class TripModel {
       route: RouteModel(
         id: 'r2',
         routeNumber: '34',
-        name: 'Megenagna ↔ Mexico',
+        nameEn: 'Megenagna ↔ Mexico',
+        nameAm: 'Megenagna ↔ Mexico',
       ),
       passengerCount: 15,
     ),
@@ -220,7 +234,12 @@ class TripModel {
       ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r1', routeNumber: '12', name: 'Piazza ↔ Bole'),
+      route: RouteModel(
+        id: 'r1',
+        routeNumber: '12',
+        nameEn: 'Piazza ↔ Bole',
+        nameAm: 'Piazza ↔ Bole',
+      ),
       passengerCount: 12,
     ),
     TripModel(
@@ -236,7 +255,12 @@ class TripModel {
       ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r1', routeNumber: '12', name: 'Bole ↔ Piazza'),
+      route: RouteModel(
+        id: 'r1',
+        routeNumber: '12',
+        nameEn: 'Bole ↔ Piazza',
+        nameAm: 'Bole ↔ Piazza',
+      ),
       passengerCount: 30, // Dynamic Peak Load for yesterday
     ),
     TripModel(
@@ -255,7 +279,8 @@ class TripModel {
       route: RouteModel(
         id: 'r2',
         routeNumber: '34',
-        name: 'Mexico ↔ Megenagna',
+        nameEn: 'Mexico ↔ Megenagna',
+        nameAm: 'Mexico ↔ Megenagna',
       ),
       passengerCount: 20,
     ),
@@ -274,7 +299,12 @@ class TripModel {
       ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r1', routeNumber: '12', name: 'Piazza ↔ Bole'),
+      route: RouteModel(
+        id: 'r1',
+        routeNumber: '12',
+        nameEn: 'Piazza ↔ Bole',
+        nameAm: 'Piazza ↔ Bole',
+      ),
       passengerCount: 25, // Dynamic Peak Load for day before
     ),
     TripModel(
@@ -290,7 +320,12 @@ class TripModel {
       ),
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
-      route: RouteModel(id: 'r1', routeNumber: '12', name: 'Bole ↔ Piazza'),
+      route: RouteModel(
+        id: 'r1',
+        routeNumber: '12',
+        nameEn: 'Bole ↔ Piazza',
+        nameAm: 'Bole ↔ Piazza',
+      ),
       passengerCount: 14,
     ),
     TripModel(
@@ -309,7 +344,8 @@ class TripModel {
       route: RouteModel(
         id: 'r2',
         routeNumber: '34',
-        name: 'Mexico ↔ Megenagna',
+        nameEn: 'Mexico ↔ Megenagna',
+        nameAm: 'Mexico ↔ Megenagna',
       ),
       passengerCount: 18,
     ),
@@ -319,16 +355,31 @@ class TripModel {
 class RouteModel {
   final String id;
   final String routeNumber;
-  final String name;
+  final String? nameAm;
+  final String? nameEn;
 
-  RouteModel({required this.id, required this.routeNumber, required this.name});
+  RouteModel({
+    required this.id,
+    required this.routeNumber,
+    this.nameAm,
+    this.nameEn,
+  });
 
   factory RouteModel.fromJson(Map<String, dynamic> json) {
     return RouteModel(
       id: json['id'],
       routeNumber: json['routeNumber'],
-      name: json['name'],
+      nameEn: json['name']['en'],
+      nameAm: json['name']['am'],
     );
+  }
+
+  String get name {
+    if (Get.locale!.languageCode == 'am') {
+      return nameAm ?? '';
+    } else {
+      return nameEn ?? '';
+    }
   }
 
   Map<String, dynamic> toJson() {

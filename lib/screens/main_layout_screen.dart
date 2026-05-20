@@ -7,6 +7,7 @@ import 'package:smartbus_driver/screens/passenger_list_screen.dart';
 import 'package:smartbus_driver/screens/scan_screen.dart';
 import 'package:smartbus_driver/screens/settings/settings_screen.dart';
 
+import '../controllers/scan_controller.dart';
 import 'home_screen.dart';
 
 class MainLayoutScreen extends StatefulWidget {
@@ -16,10 +17,49 @@ class MainLayoutScreen extends StatefulWidget {
   State<MainLayoutScreen> createState() => _MainLayoutScreenState();
 }
 
-class _MainLayoutScreenState extends State<MainLayoutScreen> {
+class _MainLayoutScreenState extends State<MainLayoutScreen>
+    with WidgetsBindingObserver {
   final PersistentTabController _controller = PersistentTabController(
     initialIndex: 0,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    Get.put(ScanController());
+    _controller.addListener(_handleTabChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleTabChange();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _controller.removeListener(_handleTabChange);
+    _controller.dispose();
+    try {
+      Get.delete<ScanController>();
+    } catch (_) {}
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _handleTabChange();
+    }
+  }
+
+  void _handleTabChange() {
+    try {
+      final scanController = Get.find<ScanController>();
+      scanController.onTabVisibilityChanged(_controller.index == 2);
+    } catch (_) {
+      // ScanController might not be initialized yet
+    }
+  }
 
   List<Widget> _buildScreens() {
     return [
@@ -35,30 +75,30 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
     return [
       PersistentBottomNavBarItem(
         icon: const Icon(LucideIcons.home),
-        title: 'Home',
+        title: 'bottom_nav_home'.tr,
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),
       ),
       PersistentBottomNavBarItem(
         icon: const Icon(LucideIcons.list),
-        title: 'Passengers',
+        title: 'bottom_nav_passengers'.tr,
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),
       ),
       PersistentBottomNavBarItem(
         icon: const Icon(LucideIcons.qrCode, color: Colors.white),
-        title: 'Scan',
+        title: 'bottom_nav_scan'.tr,
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),
       ),
       PersistentBottomNavBarItem(
-        icon: const Icon(LucideIcons.gauge),
-        title: 'Analytics',
+        icon: const Icon(LucideIcons.lineChart),
+        title: 'bottom_nav_analytics'.tr,
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),
       ),
       PersistentBottomNavBarItem(
-        icon: const Icon(LucideIcons.settings),
+        icon: const Icon(LucideIcons.user),
         title: 'bottom_nav_profile'.tr,
         activeColorPrimary: Theme.of(context).primaryColor,
         inactiveColorPrimary: const Color(0xFF64748B),

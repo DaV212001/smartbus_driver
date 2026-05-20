@@ -6,6 +6,7 @@ import '../config/dio_config.dart';
 import '../config/storage_config.dart';
 import '../utils/templates/dio_template.dart';
 import '../widgets/barcode_scanner_widget.dart';
+import '../utils/firebase_handler.dart';
 
 class AuthController extends GetxController {
   final isLoading = false.obs;
@@ -108,6 +109,7 @@ class AuthController extends GetxController {
           expiresIn,
         );
         isLoading.value = false;
+        FirebaseHandler().uploadCurrentFcmToken();
         Get.offAllNamed('/home');
       },
       onFailure: (error, response) => _handleError(error, response),
@@ -186,6 +188,7 @@ class AuthController extends GetxController {
             expiresIn,
           );
           isLoading.value = false;
+          FirebaseHandler().uploadCurrentFcmToken();
           Get.offAllNamed('/home');
         } else {
           isLoading.value = false;

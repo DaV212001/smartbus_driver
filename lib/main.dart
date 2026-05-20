@@ -13,11 +13,18 @@ import 'constants/user_controller.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/theme_mode_controller.dart';
 import 'services/local_queue_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'utils/firebase_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await ConfigPreference.init();
   await LocalQueueService.init();
+  await FirebaseHandler().initNotifications();
   runApp(const MyApp());
 }
 

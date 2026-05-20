@@ -90,9 +90,9 @@ class LoginScreen extends GetView<AuthController> {
                   icon: LucideIcons.qrCode,
                   hint: 'fid_hint'.tr,
                   suffixIcon: IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       LucideIcons.scanLine,
-                      color: Color(0xFF2563EB),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     onPressed: controller.scanBarcode,
                   ),
@@ -119,8 +119,8 @@ class LoginScreen extends GetView<AuthController> {
                 onPressed: () => Get.toNamed('/forgot-password'),
                 child: Text(
                   'forgot_password'.tr,
-                  style: const TextStyle(
-                    color: Color(0xFF2563EB),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -137,7 +137,7 @@ class LoginScreen extends GetView<AuthController> {
                       ? null
                       : controller.login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -169,8 +169,8 @@ class LoginScreen extends GetView<AuthController> {
               children: [
                 Text(
                   'dont_have_account'.tr,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
+                  style: TextStyle(
+                    color: Theme.of(context).textTheme.bodySmall?.color ?? const Color(0xFF64748B),
                     fontSize: 14,
                   ),
                 ),
@@ -178,8 +178,8 @@ class LoginScreen extends GetView<AuthController> {
                   onPressed: () => Get.toNamed('/signup'),
                   child: Text(
                     'sign_up'.tr,
-                    style: const TextStyle(
-                      color: Color(0xFF2563EB),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -199,6 +199,7 @@ class LoginScreen extends GetView<AuthController> {
     IconData icon,
     String label,
   ) {
+    final theme = Theme.of(context);
     final isSelected = controller.loginType.value == type;
     return Expanded(
       child: GestureDetector(
@@ -207,7 +208,7 @@ class LoginScreen extends GetView<AuthController> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2563EB) : Colors.transparent,
+            color: isSelected ? theme.colorScheme.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -216,7 +217,7 @@ class LoginScreen extends GetView<AuthController> {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? Colors.white : const Color(0xFF64748B),
+                color: isSelected ? Colors.white : (theme.textTheme.bodySmall?.color ?? const Color(0xFF64748B)),
               ),
               const SizedBox(width: 6),
               Text(
@@ -224,7 +225,7 @@ class LoginScreen extends GetView<AuthController> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF64748B),
+                  color: isSelected ? Colors.white : (theme.textTheme.bodySmall?.color ?? const Color(0xFF64748B)),
                 ),
               ),
             ],
@@ -246,23 +247,27 @@ class LoginScreen extends GetView<AuthController> {
     TextInputType? keyboardType,
     Widget? suffixIcon,
   }) {
+    final theme = Theme.of(context);
+    final inputBorderColor = theme.dividerColor;
+    final hintColor = theme.textTheme.bodySmall?.color?.withOpacity(0.5) ?? const Color(0xFF94A3B8);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 13,
-            color: Color(0xFF64748B),
+            color: theme.textTheme.bodySmall?.color ?? const Color(0xFF64748B),
           ),
         ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: theme.cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerColor),
+            border: Border.all(color: inputBorderColor),
           ),
           child: TextField(
             controller: controller,
@@ -270,20 +275,20 @@ class LoginScreen extends GetView<AuthController> {
             keyboardType: keyboardType,
             style: TextStyle(
               fontSize: 14,
-              color: Theme.of(context).textTheme.bodyLarge?.color,
+              color: theme.textTheme.bodyLarge?.color,
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+              hintStyle: TextStyle(color: hintColor),
               prefixIcon: Padding(
                 padding: const EdgeInsets.all(12.0),
-                child: Icon(icon, color: const Color(0xFF94A3B8), size: 20),
+                child: Icon(icon, color: hintColor, size: 20),
               ),
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
                         obscureText ? LucideIcons.eyeOff : LucideIcons.eye,
-                        color: const Color(0xFF94A3B8),
+                        color: hintColor,
                         size: 20,
                       ),
                       onPressed: toggleVisibility,

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "188978000483",
+    "project_id": "smartbus-13f98",
+    "storage_bucket": "smartbus-13f98.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:188978000483:android:e57a72ec8dd994976efe56",
+        "android_client_info": {
+          "package_name": "com.fyp.smartbus_driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2smQQZRRFKq4m3ZRtMsJnX4dYoQGPh7w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

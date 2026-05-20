@@ -74,6 +74,12 @@ class AppTranslations extends Translations {
       'unknown_error': 'Unknown Error',
       'unexpected_error': 'An unexpected error occurred.',
 
+      'success': 'Success',
+      'trip_started_success': 'Trip started successfully!',
+      'trip_ended_success': 'Trip ended successfully!',
+      'trip_start_failed': 'Failed to start trip',
+      'trip_end_failed': 'Failed to end trip',
+
       // Home Screen
       'search_prompt': 'Search route, stop, or destination',
       'filter_recent': 'Recent',
@@ -94,8 +100,10 @@ class AppTranslations extends Translations {
       'trips_completed': 'Trips Completed',
       'passengers': 'Passengers',
       'recent_alerts': 'Recent Alerts',
+      'no_recent_alerts': 'No recent alerts',
       'weraj_request': 'Weraj Request',
-      'weraj_request_desc': 'Passenger requesting drop-off at Bole Bridge Stop.',
+      'weraj_request_desc':
+          'Passenger requesting drop-off at Bole Bridge Stop.',
       'system_update': 'System Update',
       'system_update_desc': 'Peak hour traffic reported near Meskel Square.',
 
@@ -114,6 +122,7 @@ class AppTranslations extends Translations {
       // Ticket / My Tickets Screen
       'my_tickets': 'My Tickets',
       'no_active_ticket': 'No Active Ticket',
+      'no_active_trip': 'No Active Trip',
       'purchase_ticket_description': 'Purchase a ticket to start your journey',
       'to': 'TO',
       'destination': 'Destination',
@@ -156,8 +165,11 @@ class AppTranslations extends Translations {
       'resend_code': 'Resend Code',
 
       // Alerts Screen
+      'valid': 'Valid',
       'alerts': 'Alerts',
       'mark_all_read': 'Mark all as read',
+      'mark_as_read': 'Mark as read',
+      'clear_all': 'Clear All',
       'no_alerts_yet': 'No alerts yet',
       'alert': 'Alert',
 
@@ -168,6 +180,10 @@ class AppTranslations extends Translations {
       'filter_lowest_price': 'Lowest Price',
       'filter_fastest': 'Fastest',
       'filter_route_num': 'Route #',
+      'bottom_nav_home': 'Home',
+      'bottom_nav_passengers': 'Passengers',
+      'bottom_nav_scan': 'Scan',
+      'bottom_nav_analytics': 'Analytics',
       'bottom_nav_routes': 'Routes',
       'bottom_nav_ticket': 'My Ticket',
       'bottom_nav_wallet': 'Wallet',
@@ -228,9 +244,12 @@ class AppTranslations extends Translations {
       'offline_mode': 'Offline Mode',
       'online_mode': 'Online Mode',
       'ready_to_scan': 'Ready to Scan',
-      'align_qr_prompt': 'Align a passenger\'s ticket QR code inside the viewport to perform cryptographic validation.',
+      'align_qr_prompt':
+          'Align a passenger\'s ticket QR code inside the viewport to perform cryptographic validation.',
       'inspection_verified': 'Inspection Verified',
-      'inspection_verified_desc': 'Ticket signature is valid but state is kept active.',
+      'inspection_verified_desc':
+          'Ticket signature is valid but state is kept active.',
+      'valid_ticket': 'Valid Ticket',
       'valid_ticket_desc': 'Ticket validated and boarding approved.',
       'type': 'Type',
       'scan_time': 'Scan Time',
@@ -246,11 +265,13 @@ class AppTranslations extends Translations {
       'issues': 'Issues',
       'used_before': 'Used Before',
       'no_scans_recorded': 'No Scans Recorded',
-      'no_scans_recorded_desc': 'No passengers have been scanned during this trip yet.',
+      'no_scans_recorded_desc':
+          'No passengers have been scanned during this trip yet.',
 
       // Analytics Screen
       'no_trip_history': 'No Trip History',
-      'no_trip_history_desc': 'You have not completed any trips yet to record analytics.',
+      'no_trip_history_desc':
+          'You have not completed any trips yet to record analytics.',
       'driver_dashboard': 'Driver dashboard',
       'todays_stats': 'Today\'s Stats',
       'trips_completed_today': 'Trips completed today',
@@ -336,6 +357,12 @@ class AppTranslations extends Translations {
       'unknown_error': 'ያልታወቀ ስህተት',
       'unexpected_error': 'ያልተጠበቀ ስህተት ተፈጥሯል፣ እባክዎ በኋላ ይሞክሩ',
 
+      'success': 'Success',
+      'trip_started_success': 'Trip started successfully!',
+      'trip_ended_success': 'Trip ended successfully!',
+      'trip_start_failed': 'Failed to start trip',
+      'trip_end_failed': 'Failed to end trip',
+
       // Home Screen
       'search_prompt': 'መስመር፣ ማቆሚያ ወይም መድረሻ ይፈልጉ',
       'filter_recent': 'የቅርብ ጊዜ',
@@ -356,6 +383,7 @@ class AppTranslations extends Translations {
       'trips_completed': 'የተጠናቀቁ ጉዞዎች',
       'passengers': 'ተጓዦች',
       'recent_alerts': 'የቅርብ ጊዜ ማሳወቂያዎች',
+      'no_recent_alerts': 'ምንም የቅርብ ጊዜ ማሳወቂያ የለም',
       'weraj_request': 'ወራጅ ጥያቄ',
       'weraj_request_desc': 'ተጓዡ ቦሌ ድልድይ ማቆሚያ ላይ ለመውረድ እየጠየቀ ነው።',
       'system_update': 'የስርዓት መረጃ',
@@ -376,6 +404,7 @@ class AppTranslations extends Translations {
       // Ticket / My Tickets Screen
       'my_tickets': 'የእኔ ትኬቶች',
       'no_active_ticket': 'ምንም ንቁ ትኬት የለም',
+      'no_active_trip': 'ምንም ንቁ ጉዞ የለም',
       'purchase_ticket_description': 'ጉዞዎን ለመጀመር ትኬት ይግዙ',
       'to': 'እስከ',
       'destination': 'መድረሻ',
@@ -418,8 +447,11 @@ class AppTranslations extends Translations {
       'resend_code': 'ኮድ በድጋሚ ላክ',
 
       // Alerts Screen
+      'valid': 'ትክክለኛ',
       'alerts': 'ማሳወቂያዎች',
       'mark_all_read': 'ሁሉንም የተነበቡ አድርግ',
+      'mark_as_read': 'እንደተነበበ አድርግ',
+      'clear_all': 'ሁሉንም አጽዳ',
       'no_alerts_yet': 'እስካሁን ምንም ማሳወቂያ የለም',
       'alert': 'ማሳወቂያ',
 
@@ -430,6 +462,10 @@ class AppTranslations extends Translations {
       'filter_lowest_price': 'ዝቅተኛ ዋጋ',
       'filter_fastest': 'ፈጣን',
       'filter_route_num': 'መስመር #',
+      'bottom_nav_home': 'መነሻ',
+      'bottom_nav_passengers': 'ተጓዦች',
+      'bottom_nav_scan': 'መቃኛ',
+      'bottom_nav_analytics': 'ስታትስቲክስ',
       'bottom_nav_routes': 'መስመሮች',
       'bottom_nav_ticket': 'የእኔ ትኬት',
       'bottom_nav_wallet': 'ዋሌት',
@@ -490,9 +526,12 @@ class AppTranslations extends Translations {
       'offline_mode': 'ከኢንተርኔት ውጭ',
       'online_mode': 'ኦንላይን',
       'ready_to_scan': 'ለመቃኘት ዝግጁ',
-      'align_qr_prompt': 'ትክክለኛነቱን ለማረጋገጥ የተጓዡን የትኬት ኪውአር (QR) ኮድ በመቃኛው ውስጥ ያስገቡ።',
+      'align_qr_prompt':
+          'ትክክለኛነቱን ለማረጋገጥ የተጓዡን የትኬት ኪውአር (QR) ኮድ በመቃኛው ውስጥ ያስገቡ።',
       'inspection_verified': 'ፍተሻ ተረጋግጧል',
-      'inspection_verified_desc': 'የትኬቱ ዲጂታል ፊርማ ትክክለኛ ነው ነገር ግን የትኬቱ ሁኔታ እንደነቃ ይቆያል።',
+      'inspection_verified_desc':
+          'የትኬቱ ዲጂታል ፊርማ ትክክለኛ ነው ነገር ግን የትኬቱ ሁኔታ እንደነቃ ይቆያል።',
+      'valid_ticket': 'ትክክለኛ ትኬት',
       'valid_ticket_desc': 'ትኬቱ ተረጋግጧል፣ መሳፈር ተፈቅዷል።',
       'type': 'አይነት',
       'scan_time': 'የተቃኘበት ሰዓት',

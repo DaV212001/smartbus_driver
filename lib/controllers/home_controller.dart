@@ -4,12 +4,15 @@ import 'package:get/get.dart';
 
 import '../models/trip_model.dart';
 import '../services/analytics_storage.dart';
+import '../services/local_queue_service.dart';
 import '../utils/api_call_status.dart';
 import '../utils/error_data.dart';
 import '../utils/error_utils.dart';
 import '../utils/templates/dio_template.dart';
 
 class HomeController extends GetxController {
+  final LocalQueueService _queueService = LocalQueueService();
+
   // Reactive state variables
   var apiCallStatus = ApiCallStatus.loading.obs;
   var errorData = Rxn<ErrorData>();
@@ -17,11 +20,17 @@ class HomeController extends GetxController {
   var tripsCompleted = 0.obs;
   var passengersTransported = 0.obs;
   var isActionLoading = false.obs;
+  var notifications = <Map<String, dynamic>>[].obs;
 
   @override
   void onInit() {
     super.onInit();
     loadDashboardData();
+    loadNotifications();
+  }
+
+  void loadNotifications() {
+    notifications.value = _queueService.getNotifications();
   }
 
   Future<void> loadDashboardData() async {
@@ -82,6 +91,7 @@ class HomeController extends GetxController {
         apiCallStatus.value = trips.isEmpty
             ? ApiCallStatus.empty
             : ApiCallStatus.success;
+        loadNotifications();
       },
       onFailure: (error, response) async {
         final err = await ErrorUtil.getErrorData(error.toString());
@@ -104,8 +114,8 @@ class HomeController extends GetxController {
       path: actionPath,
       onSuccess: (response) async {
         Get.snackbar(
-          'Success',
-          isStart ? 'Trip started successfully!' : 'Trip ended successfully!',
+          'success'.tr,
+          isStart ? 'trip_started_success'.tr : 'trip_ended_success'.tr,
           backgroundColor: const Color(0xFFE6F3EC),
           colorText: const Color(0xFF0B6E4F),
         );
@@ -114,17 +124,27 @@ class HomeController extends GetxController {
       },
       onFailure: (error, response) {
         isActionLoading.value = false;
-        String msg = isStart ? 'Failed to start trip' : 'Failed to end trip';
+        String msg = isStart ? 'trip_start_failed'.tr : 'trip_end_failed'.tr;
         if (response.data != null && response.data['message'] != null) {
           msg = response.data['message'].toString();
         }
         Get.snackbar(
-          'Error',
+          'error'.tr,
           msg,
           backgroundColor: const Color(0xFFFEF2F2),
           colorText: const Color(0xFFDC2626),
         );
       },
     );
+  }
+
+  Future<void> clearAllNotifications() async {
+    await _queueService.clearNotifications();
+    loadNotifications();
+  }
+
+  Future<void> markAsRead(int index) async {
+    await _queueService.markNotificationAsRead(index);
+    loadNotifications();
   }
 }

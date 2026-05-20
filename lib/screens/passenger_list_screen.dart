@@ -35,6 +35,7 @@ class PassengerListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(PassengerListController());
+    final theme = Theme.of(context);
     return Obx(() {
       final apiCallStatus = controller.apiCallStatus.value;
       final errorData = controller.errorData.value;
@@ -42,8 +43,8 @@ class PassengerListScreen extends StatelessWidget {
 
       if (apiCallStatus == ApiCallStatus.error) {
         return Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: _buildAppBar(controller),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: _buildAppBar(context, controller),
           body: Center(
             child: ErrorCard(
               errorData:
@@ -62,8 +63,8 @@ class PassengerListScreen extends StatelessWidget {
 
       if (apiCallStatus == ApiCallStatus.empty) {
         return Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: _buildAppBar(controller),
+          backgroundColor: theme.scaffoldBackgroundColor,
+          appBar: _buildAppBar(context, controller),
           body: Center(
             child: ErrorCard(
               errorData: ErrorData(
@@ -92,8 +93,8 @@ class PassengerListScreen extends StatelessWidget {
           : controller.scans;
 
       return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: _buildAppBar(controller),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: _buildAppBar(context, controller),
         body: Column(
           children: [
             StatsBar(
@@ -143,8 +144,9 @@ class PassengerListScreen extends StatelessWidget {
     });
   }
 
-  PreferredSizeWidget _buildAppBar(PassengerListController ctrl) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, PassengerListController ctrl) {
     final isLoading = ctrl.apiCallStatus.value == ApiCallStatus.loading;
+    final theme = Theme.of(context);
     String busInfo = '';
     final activeTrip = ctrl.activeTrip.value;
     if (!isLoading && activeTrip != null) {
@@ -162,7 +164,7 @@ class PassengerListScreen extends StatelessWidget {
           right: 20,
           bottom: 12,
         ),
-        color: const Color(0xFF0B66B2),
+        color: theme.colorScheme.primary,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -225,11 +227,15 @@ class StatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final warningColor = const Color(0xFFFF8A00);
+    final successColor = const Color(0xFF22C55E);
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ),
       child: ShimmerWrapper(
         isEnabled: isLoading,
@@ -237,19 +243,22 @@ class StatsBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildStatItem(
+              context,
               'total'.tr,
               isLoading ? '--' : total.toString(),
-              AppColors.mutedForeground,
+              theme.textTheme.bodySmall?.color ?? const Color(0xFF65707A),
             ),
             _buildStatItem(
+              context,
               'valid'.tr,
               isLoading ? '--' : valid.toString(),
-              AppColors.success,
+              successColor,
             ),
             _buildStatItem(
+              context,
               'issues'.tr,
               isLoading ? '--' : issues.toString(),
-              AppColors.warning,
+              warningColor,
             ),
           ],
         ),
@@ -257,7 +266,8 @@ class StatsBar extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
+  Widget _buildStatItem(BuildContext context, String label, String value, Color color) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -273,10 +283,10 @@ class StatsBar extends StatelessWidget {
         const Padding(padding: EdgeInsets.only(top: 2)),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: AppColors.foreground,
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
       ],
@@ -296,9 +306,13 @@ class PassengerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    BoxDecoration itemDecoration = const BoxDecoration(
-      color: Colors.white,
-      border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+    final theme = Theme.of(context);
+    final warningColor = const Color(0xFFFF8A00);
+    final errorColor = theme.colorScheme.error;
+
+    BoxDecoration itemDecoration = BoxDecoration(
+      color: theme.cardColor,
+      border: Border(bottom: BorderSide(color: theme.dividerColor, width: 0.5)),
     );
     PassengerStatus status = PassengerStatus.valid;
     if (passenger.result == 'EXPIRED') {
@@ -310,19 +324,23 @@ class PassengerItem extends StatelessWidget {
 
     if (!isLoading) {
       if (status == PassengerStatus.usedBefore) {
-        itemDecoration = const BoxDecoration(
-          color: Color(0xFFFFFBEB),
+        itemDecoration = BoxDecoration(
+          color: theme.brightness == Brightness.dark
+              ? warningColor.withOpacity(0.08)
+              : const Color(0xFFFFFBEB),
           border: Border(
-            left: BorderSide(color: AppColors.warning, width: 4),
-            bottom: BorderSide(color: AppColors.border, width: 0.5),
+            left: BorderSide(color: warningColor, width: 4),
+            bottom: BorderSide(color: theme.dividerColor, width: 0.5),
           ),
         );
       } else if (status == PassengerStatus.expired) {
-        itemDecoration = const BoxDecoration(
-          color: Color(0xFFFEF2F2),
+        itemDecoration = BoxDecoration(
+          color: theme.brightness == Brightness.dark
+              ? errorColor.withOpacity(0.08)
+              : const Color(0xFFFEF2F2),
           border: Border(
-            left: BorderSide(color: AppColors.destructive, width: 4),
-            bottom: BorderSide(color: AppColors.border, width: 0.5),
+            left: BorderSide(color: errorColor, width: 4),
+            bottom: BorderSide(color: theme.dividerColor, width: 0.5),
           ),
         );
       }
@@ -330,10 +348,10 @@ class PassengerItem extends StatelessWidget {
 
     final nameInitials = passenger.name.isNotEmpty
         ? passenger.name
-              .split(' ')
-              .map((e) => e.substring(0, 1))
-              .join()
-              .toUpperCase()
+            .split(' ')
+            .map((e) => e.substring(0, 1))
+            .join()
+            .toUpperCase()
         : '??';
     final truncatedInitials = nameInitials.length > 2
         ? nameInitials.substring(0, 2)
@@ -354,77 +372,81 @@ class PassengerItem extends StatelessWidget {
           children: [
             Row(
               children: [
-                _buildInitialsAvatar(truncatedInitials),
+                _buildInitialsAvatar(context, truncatedInitials),
                 const Padding(padding: EdgeInsets.only(left: 12)),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       passenger.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.foreground,
+                        color: theme.textTheme.bodyLarge?.color,
                       ),
                     ),
                     const Padding(padding: EdgeInsets.only(top: 2)),
                     Text(
                       passenger.time,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.mutedForeground,
+                        color: theme.textTheme.bodySmall?.color ?? const Color(0xFF65707A),
                       ),
                     ),
                   ],
                 ),
               ],
             ),
-            _buildStatusBadge(status),
+            _buildStatusBadge(context, status),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInitialsAvatar(String text) => Container(
-    width: 40,
-    height: 40,
-    decoration: const BoxDecoration(
-      color: Color(0xFFE2E8F0),
-      shape: BoxShape.circle,
-    ),
-    alignment: Alignment.center,
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF64748B),
+  Widget _buildInitialsAvatar(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.dark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+        shape: BoxShape.circle,
       ),
-    ),
-  );
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: theme.brightness == Brightness.dark ? Colors.white70 : const Color(0xFF64748B),
+        ),
+      ),
+    );
+  }
 
-  Widget _buildStatusBadge(PassengerStatus status) {
+  Widget _buildStatusBadge(BuildContext context, PassengerStatus status) {
+    final theme = Theme.of(context);
     Color labelColor;
     Color bgColor;
     IconData icon;
     String txt;
     switch (status) {
       case PassengerStatus.valid:
-        labelColor = AppColors.success;
-        bgColor = AppColors.successBg;
+        labelColor = const Color(0xFF22C55E);
+        bgColor = const Color(0xFF22C55E).withOpacity(0.1);
         icon = Icons.check_circle_outline;
         txt = 'valid'.tr;
         break;
       case PassengerStatus.usedBefore:
         labelColor = const Color(0xFFB45309);
-        bgColor = const Color(0x26F59E0B);
+        bgColor = const Color(0xFFB45309).withOpacity(0.1);
         icon = Icons.warning_amber_rounded;
         txt = 'used_before'.tr;
         break;
       case PassengerStatus.expired:
-        labelColor = AppColors.destructive;
-        bgColor = AppColors.destructiveBg;
+        labelColor = theme.colorScheme.error;
+        bgColor = theme.colorScheme.error.withOpacity(0.1);
         icon = Icons.cancel_outlined;
         txt = 'expired'.tr;
         break;
