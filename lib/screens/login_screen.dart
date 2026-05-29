@@ -164,29 +164,6 @@ class LoginScreen extends GetView<AuthController> {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'dont_have_account'.tr,
-                  style: TextStyle(
-                    color: Theme.of(context).textTheme.bodySmall?.color ?? const Color(0xFF64748B),
-                    fontSize: 14,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => Get.toNamed('/signup'),
-                  child: Text(
-                    'sign_up'.tr,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
