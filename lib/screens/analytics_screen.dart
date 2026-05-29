@@ -355,13 +355,15 @@ class _TodayStatCard extends StatelessWidget {
             size: 14,
           ),
           const SizedBox(width: 4),
-          Text(
-            'same_as_yesterday'.tr,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color:
-                  theme.textTheme.bodySmall?.color ?? const Color(0xFF6B7280),
+          Expanded(
+            child: Text(
+              'same_as_yesterday'.tr,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color:
+                    theme.textTheme.bodySmall?.color ?? const Color(0xFF6B7280),
+              ),
             ),
           ),
         ],

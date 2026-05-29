@@ -83,7 +83,7 @@ class PassengerListController extends GetxController {
             final List<ScannedPassenger> loaded = scanItems.map((item) => ScannedPassenger.fromJson(item)).toList();
             final total = loaded.length;
             final valid = loaded.where((s) => s.result == 'VALID').length;
-            final issues = loaded.where((s) => s.result == 'ALREADY_USED' || s.result == 'EXPIRED' || s.isPreviouslySeen).length;
+            final issues = loaded.where((s) => s.result == 'ALREADY_USED' || s.result == 'EXPIRED').length;
             activeTrip.value = active;
             scans.assignAll(loaded);
             totalScans.value = total;

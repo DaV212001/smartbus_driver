@@ -317,8 +317,7 @@ class PassengerItem extends StatelessWidget {
     PassengerStatus status = PassengerStatus.valid;
     if (passenger.result == 'EXPIRED') {
       status = PassengerStatus.expired;
-    } else if (passenger.result == 'ALREADY_USED' ||
-        passenger.isPreviouslySeen) {
+    } else if (passenger.result == 'ALREADY_USED') {
       status = PassengerStatus.usedBefore;
     }
 

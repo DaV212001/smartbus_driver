@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:logger/logger.dart';
 
 import '../models/qr_payload_data.dart';
 
@@ -46,6 +47,8 @@ class LocalTicketValidator {
     required List<String> previouslyScannedTicketIds,
     bool inspectionMode = false,
   }) {
+    Logger().d(activeRouteId);
+    Logger().d(inspectionMode);
     // A. Verify Cryptographic Integrity
     if (!verifySignature(payload, signature)) {
       return OfflineValidationResult(

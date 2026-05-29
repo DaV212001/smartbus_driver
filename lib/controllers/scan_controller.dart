@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:logger/logger.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../constants/assets.dart';
@@ -250,6 +251,7 @@ class ScanController extends GetxController with WidgetsBindingObserver {
       onFailure: (err, response) async {
         int statusCode = 500;
         if (err is DioException) {
+          Logger().d(err.response!.data);
           statusCode = err.response?.statusCode ?? 500;
         } else if (response.statusCode != null) {
           statusCode = response.statusCode!;
