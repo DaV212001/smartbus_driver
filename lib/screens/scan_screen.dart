@@ -101,19 +101,6 @@ class TicketScannerScreen extends StatelessWidget {
               ),
             ],
           ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.tune_outlined,
-              size: 18,
-              color: theme.colorScheme.onPrimary,
-            ),
-          ),
         ],
       ),
     );
