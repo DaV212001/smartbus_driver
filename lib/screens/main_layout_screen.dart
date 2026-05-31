@@ -28,6 +28,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     Get.put(ScanController());
+    // Register the tab controller so ScanController can switch tabs
+    Get.put(_controller, tag: 'mainNav');
     _controller.addListener(_handleTabChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleTabChange();
@@ -38,6 +40,9 @@ class _MainLayoutScreenState extends State<MainLayoutScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller.removeListener(_handleTabChange);
+    try {
+      Get.delete<PersistentTabController>(tag: 'mainNav');
+    } catch (_) {}
     _controller.dispose();
     try {
       Get.delete<ScanController>();

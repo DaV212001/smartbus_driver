@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:logger/logger.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:persistent_bottom_nav_bar/persistent_bottom_nav_bar.dart';
 
 import '../constants/assets.dart';
 import '../controllers/home_controller.dart';
+import '../controllers/passenger_list_controller.dart';
 import '../services/local_queue_service.dart';
 import '../utils/api_call_status.dart';
 import '../utils/error_data.dart';
@@ -219,6 +221,11 @@ class ScanController extends GetxController with WidgetsBindingObserver {
 
       lastScanResult.value = localCheck;
       apiCallStatus.value = ApiCallStatus.success;
+
+      // Navigate to passenger list on inspection success
+      if (activeMode.value == 'Inspection' && localCheck.ticketId != null) {
+        _navigateToPassengerListAndHighlight(localCheck.ticketId!);
+      }
       return;
     }
 
@@ -247,6 +254,11 @@ class ScanController extends GetxController with WidgetsBindingObserver {
 
         lastScanResult.value = resultData;
         apiCallStatus.value = ApiCallStatus.success;
+
+        // Navigate to passenger list on inspection success
+        if (activeMode.value == 'Inspection' && localCheck.ticketId != null) {
+          _navigateToPassengerListAndHighlight(localCheck.ticketId!);
+        }
       },
       onFailure: (err, response) async {
         int statusCode = 500;
@@ -323,5 +335,38 @@ class ScanController extends GetxController with WidgetsBindingObserver {
     errorData.value = null;
     lastScanResult.value = null;
     _updateCameraState();
+  }
+
+  /// Navigate to the Passenger List tab and highlight the scanned ticket
+  void _navigateToPassengerListAndHighlight(String ticketId) {
+    // Brief delay so the user can see the success feedback before switching
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      // Switch to Passengers tab (index 1) via the PersistentTabController
+      try {
+        final mainNavController = Get.find<PersistentTabController>(
+          tag: 'mainNav',
+        );
+        mainNavController.jumpToTab(1);
+      } catch (_) {
+        // Fallback: if the tag isn't registered, try finding by type
+        return;
+      }
+
+      // Refresh passenger data and highlight the card
+      try {
+        final passengerController = Get.find<PassengerListController>();
+        //check connectivity before loading scan data:
+        if (isOffline.value) {
+          passengerController.highlightPassenger(ticketId);
+          return;
+        }
+        passengerController.loadScansData().then((_) {
+          passengerController.highlightPassenger(ticketId);
+        });
+      } catch (_) {}
+
+      // Reset scan screen state so it's ready for next scan
+      reset();
+    });
   }
 }

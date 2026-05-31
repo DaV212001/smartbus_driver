@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
@@ -160,10 +161,18 @@ class DioConfig {
     if (_dioInstance != null) return _dioInstance!;
 
     if (cookieJar == null) {
-      final dir = await getApplicationDocumentsDirectory();
-      cookieJar = PersistCookieJar(
-        storage: FileStorage('${dir.path}/.cookies/'),
-      );
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        cookieJar = PersistCookieJar(
+          storage: FileStorage('${dir.path}/.cookies/'),
+        );
+      } catch (e) {
+        // Fallback for headless test environments where path_provider is not available
+        final dir = Directory.systemTemp;
+        cookieJar = PersistCookieJar(
+          storage: FileStorage('${dir.path}/.cookies/'),
+        );
+      }
     }
 
     _dioInstance = Dio(

@@ -29,8 +29,40 @@ class AppColors {
 
 enum PassengerStatus { valid, usedBefore, expired }
 
-class PassengerListScreen extends StatelessWidget {
+class PassengerListScreen extends StatefulWidget {
   const PassengerListScreen({super.key});
+
+  @override
+  State<PassengerListScreen> createState() => _PassengerListScreenState();
+}
+
+class _PassengerListScreenState extends State<PassengerListScreen> {
+  final ScrollController _scrollController = ScrollController();
+  static const double _itemHeight = 65.0; // Approximate height of PassengerItem
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToHighlightedItem(List<ScannedPassenger> list, String ticketId) {
+    final index = list.indexWhere((p) => p.ticketId == ticketId);
+    if (index < 0) return;
+
+    // Wait for the list to build then scroll
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final targetOffset = index * _itemHeight;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final scrollTo = targetOffset.clamp(0.0, maxScroll);
+      _scrollController.animateTo(
+        scrollTo,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +72,7 @@ class PassengerListScreen extends StatelessWidget {
       final apiCallStatus = controller.apiCallStatus.value;
       final errorData = controller.errorData.value;
       final isLoading = apiCallStatus == ApiCallStatus.loading;
+      final highlightedId = controller.highlightedTicketId.value;
 
       if (apiCallStatus == ApiCallStatus.error) {
         return Scaffold(
@@ -92,6 +125,11 @@ class PassengerListScreen extends StatelessWidget {
             )
           : controller.scans;
 
+      // Auto-scroll to highlighted item when highlight changes
+      if (highlightedId != null && !isLoading) {
+        _scrollToHighlightedItem(displayList, highlightedId);
+      }
+
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         appBar: _buildAppBar(context, controller),
@@ -127,6 +165,7 @@ class PassengerListScreen extends StatelessWidget {
                       PassengerItem(passenger: displayList[i], isLoading: true),
                 ),
                 child: ListView.builder(
+                  controller: _scrollController,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: 24),
@@ -134,6 +173,8 @@ class PassengerListScreen extends StatelessWidget {
                   itemBuilder: (c, i) => PassengerItem(
                     passenger: displayList[i],
                     isLoading: false,
+                    isHighlighted: highlightedId != null &&
+                        displayList[i].ticketId == highlightedId,
                   ),
                 ),
               ),
@@ -294,21 +335,66 @@ class StatsBar extends StatelessWidget {
   }
 }
 
-class PassengerItem extends StatelessWidget {
+class PassengerItem extends StatefulWidget {
   final ScannedPassenger passenger;
   final bool isLoading;
+  final bool isHighlighted;
 
   const PassengerItem({
     super.key,
     required this.passenger,
     required this.isLoading,
+    this.isHighlighted = false,
   });
+
+  @override
+  State<PassengerItem> createState() => _PassengerItemState();
+}
+
+class _PassengerItemState extends State<PassengerItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _highlightController;
+  late Animation<double> _highlightAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _highlightController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _highlightAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _highlightController, curve: Curves.easeInOut),
+    );
+    if (widget.isHighlighted) {
+      _highlightController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PassengerItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isHighlighted && !oldWidget.isHighlighted) {
+      _highlightController.repeat(reverse: true);
+    } else if (!widget.isHighlighted && oldWidget.isHighlighted) {
+      _highlightController.stop();
+      _highlightController.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _highlightController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final warningColor = const Color(0xFFFF8A00);
     final errorColor = theme.colorScheme.error;
+    final passenger = widget.passenger;
+    final isLoading = widget.isLoading;
 
     BoxDecoration itemDecoration = BoxDecoration(
       color: theme.cardColor,
@@ -345,6 +431,45 @@ class PassengerItem extends StatelessWidget {
       }
     }
 
+    // Wrap in AnimatedBuilder for highlight pulse
+    if (widget.isHighlighted) {
+      return AnimatedBuilder(
+        animation: _highlightAnimation,
+        builder: (context, child) {
+          final glowOpacity = 0.08 + (_highlightAnimation.value * 0.18);
+          final borderOpacity = 0.3 + (_highlightAnimation.value * 0.5);
+          return Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(glowOpacity),
+              border: Border(
+                left: BorderSide(
+                  color: theme.colorScheme.primary.withOpacity(borderOpacity),
+                  width: 4,
+                ),
+                bottom: BorderSide(color: theme.dividerColor, width: 0.5),
+              ),
+            ),
+            child: child,
+          );
+        },
+        child: _buildItemContent(context, passenger, isLoading, status),
+      );
+    }
+
+    return Container(
+      decoration: itemDecoration,
+      child: _buildItemContent(context, passenger, isLoading, status),
+    );
+  }
+
+  Widget _buildItemContent(
+    BuildContext context,
+    ScannedPassenger passenger,
+    bool isLoading,
+    PassengerStatus status,
+  ) {
+    final theme = Theme.of(context);
+
     final nameInitials = passenger.name.isNotEmpty
         ? passenger.name
             .split(' ')
@@ -356,14 +481,13 @@ class PassengerItem extends StatelessWidget {
         ? nameInitials.substring(0, 2)
         : nameInitials;
 
-    return Container(
+    return Padding(
       padding: EdgeInsets.only(
         left: (status == PassengerStatus.valid || isLoading) ? 20 : 16,
         right: 20,
         top: 12,
         bottom: 12,
       ),
-      decoration: itemDecoration,
       child: ShimmerWrapper(
         isEnabled: isLoading,
         child: Row(

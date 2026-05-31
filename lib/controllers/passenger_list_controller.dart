@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import '../models/trip_model.dart';
 import '../utils/api_call_status.dart';
@@ -14,6 +16,10 @@ class PassengerListController extends GetxController {
   var totalScans = 0.obs;
   var validScans = 0.obs;
   var issueScans = 0.obs;
+
+  /// The ticket ID to highlight after an inspection scan
+  var highlightedTicketId = Rxn<String>();
+  Timer? _highlightTimer;
 
   @override
   void onInit() {
@@ -105,11 +111,33 @@ class PassengerListController extends GetxController {
       },
     );
   }
+
+  /// Called by ScanController to highlight a specific passenger card
+  void highlightPassenger(String ticketId) {
+    _highlightTimer?.cancel();
+    highlightedTicketId.value = ticketId;
+    // Auto-clear highlight after 5 seconds
+    _highlightTimer = Timer(const Duration(seconds: 5), () {
+      highlightedTicketId.value = null;
+    });
+  }
+
+  void clearHighlight() {
+    _highlightTimer?.cancel();
+    highlightedTicketId.value = null;
+  }
+
+  @override
+  void onClose() {
+    _highlightTimer?.cancel();
+    super.onClose();
+  }
 }
 
 // Model for scanned passenger (same as in screen file) – kept here for reuse
 class ScannedPassenger {
   final String id;
+  final String? ticketId;
   final String name;
   final String time;
   final String result;
@@ -117,6 +145,7 @@ class ScannedPassenger {
 
   ScannedPassenger({
     required this.id,
+    this.ticketId,
     required this.name,
     required this.time,
     required this.result,
@@ -137,6 +166,7 @@ class ScannedPassenger {
     }
     return ScannedPassenger(
       id: json['id'] ?? '',
+      ticketId: json['ticketId'] ?? json['ticket']?['id'],
       name: json['passenger']?['fullName'] ?? 'Unknown Passenger',
       time: formattedTime,
       result: json['result'] ?? 'VALID',
