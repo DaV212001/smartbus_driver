@@ -108,6 +108,21 @@ class HomeScreen extends StatelessWidget {
                         isActionLoading: isActionLoading,
                       ),
 
+                      Obx(() {
+                        if (controller.scheduledTrips.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SectionTitle(title: 'upcoming_trips'.tr),
+                            ...controller.scheduledTrips.map(
+                              (trip) => _ScheduledTripCard(trip: trip),
+                            ),
+                          ],
+                        );
+                      }),
+
                       _SectionTitle(title: "todays_activity".tr),
                       _StatsGrid(
                         tripsCompleted: tripsCompleted,
@@ -507,6 +522,82 @@ class _AssignmentCard extends StatelessWidget {
                   ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ScheduledTripCard extends StatelessWidget {
+  final TripModel trip;
+
+  const _ScheduledTripCard({required this.trip});
+
+  String _formatTimeOnly(DateTime dt) {
+    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+    final min = dt.minute.toString().padLeft(2, '0');
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '${hour.toString().padLeft(2, '0')}:$min $ampm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final name = trip.route.name;
+    final parts = name.split(RegExp(r'\s+to\s+|\s+To\s+|\s+↔\s+'));
+    String fromStop = parts.isNotEmpty ? parts[0].trim() : name;
+    String toStop = parts.length >= 2 ? parts[1].trim() : 'Terminal';
+
+    return Container(
+      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'route_label'.trParams({'route': trip.route.routeNumber}),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$fromStop ↔ $toStop',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.textTheme.bodyMedium?.color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              _formatTimeOnly(trip.scheduledFor),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

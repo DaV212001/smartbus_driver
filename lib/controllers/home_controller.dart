@@ -21,6 +21,7 @@ class HomeController extends GetxController {
   var passengersTransported = 0.obs;
   var isActionLoading = false.obs;
   var notifications = <Map<String, dynamic>>[].obs;
+  var scheduledTrips = <TripModel>[].obs;
 
   @override
   void onInit() {
@@ -88,6 +89,9 @@ class HomeController extends GetxController {
         activeTrip.value = active;
         tripsCompleted.value = todayCompleted;
         passengersTransported.value = todayPassengers;
+        scheduledTrips.value = trips
+            .where((t) => t.status == 'SCHEDULED' && t.id != active?.id)
+            .toList();
         apiCallStatus.value = trips.isEmpty
             ? ApiCallStatus.empty
             : ApiCallStatus.success;
