@@ -10,6 +10,7 @@ import '../controllers/home_controller.dart';
 import '../models/trip_model.dart';
 import '../utils/api_call_status.dart';
 import '../utils/error_data.dart';
+import '../utils/functions/date_time_to_ethiopian_time.dart';
 import '../utils/wrappers/shimmer_wrapper.dart';
 import '../widgets/animated_widgets/loading_animation_button.dart';
 import '../widgets/cards/error_card.dart';
@@ -336,10 +337,22 @@ class _AssignmentCard extends StatelessWidget {
   });
 
   String _formatTimeOnly(DateTime dt) {
-    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-    final min = dt.minute.toString().padLeft(2, '0');
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-    return '${hour.toString().padLeft(2, '0')}:$min $ampm';
+    // Convert to Ethiopian Timezone (UTC+3)
+    final etDT = toEthiopian(dt);
+
+    // Ethiopian clock shift: 6 hours behind standard time
+    // e.g., 6:00 AM standard is 12:00 in Ethiopian time
+    int etHour = etDT.hour >= 6 ? etDT.hour - 6 : etDT.hour + 6;
+
+    // Handle 12-hour format for the shifted time
+    final displayHour = etHour == 0 ? 12 : (etHour > 12 ? etHour - 12 : etHour);
+    final min = etDT.minute.toString().padLeft(2, '0');
+
+    // Determine Ethiopian period (Morning, Afternoon, Evening, Night)
+    // This is a simplified version; usually it's "Morning" (6am-12pm), "Afternoon" (12pm-6pm), etc.
+    final ampm = etDT.hour >= 6 && etDT.hour < 18 ? 'Day' : 'Night';
+
+    return '${displayHour.toString().padLeft(2, '0')}:$min $ampm';
   }
 
   @override
@@ -533,10 +546,22 @@ class _ScheduledTripCard extends StatelessWidget {
   const _ScheduledTripCard({required this.trip});
 
   String _formatTimeOnly(DateTime dt) {
-    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-    final min = dt.minute.toString().padLeft(2, '0');
-    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-    return '${hour.toString().padLeft(2, '0')}:$min $ampm';
+    // Convert to Ethiopian Timezone (UTC+3)
+    final etDT = toEthiopian(dt);
+
+    // Ethiopian clock shift: 6 hours behind standard time
+    // e.g., 6:00 AM standard is 12:00 in Ethiopian time
+    int etHour = etDT.hour >= 6 ? etDT.hour - 6 : etDT.hour + 6;
+
+    // Handle 12-hour format for the shifted time
+    final displayHour = etHour == 0 ? 12 : (etHour > 12 ? etHour - 12 : etHour);
+    final min = etDT.minute.toString().padLeft(2, '0');
+
+    // Determine Ethiopian period (Morning, Afternoon, Evening, Night)
+    // This is a simplified version; usually it's "Morning" (6am-12pm), "Afternoon" (12pm-6pm), etc.
+    final ampm = etDT.hour >= 6 && etDT.hour < 18 ? 'Day' : 'Night';
+
+    return '${displayHour.toString().padLeft(2, '0')}:$min $ampm';
   }
 
   @override

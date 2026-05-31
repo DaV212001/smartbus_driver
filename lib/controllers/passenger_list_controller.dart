@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
+
 import '../models/trip_model.dart';
 import '../utils/api_call_status.dart';
 import '../utils/error_data.dart';
 import '../utils/error_utils.dart';
+import '../utils/functions/date_time_to_ethiopian_time.dart';
 import '../utils/templates/dio_template.dart';
 
 class PassengerListController extends GetxController {
@@ -49,7 +51,9 @@ class PassengerListController extends GetxController {
         } else if (rawTrips is List<dynamic>) {
           items = rawTrips;
         }
-        final List<TripModel> trips = items.map((item) => TripModel.fromJson(item)).toList();
+        final List<TripModel> trips = items
+            .map((item) => TripModel.fromJson(item))
+            .toList();
         TripModel? active;
         try {
           active = trips.firstWhere((t) => t.status == 'IN_PROGRESS');
@@ -86,16 +90,24 @@ class PassengerListController extends GetxController {
             } else if (rawScans is List<dynamic>) {
               scanItems = rawScans;
             }
-            final List<ScannedPassenger> loaded = scanItems.map((item) => ScannedPassenger.fromJson(item)).toList();
+            final List<ScannedPassenger> loaded = scanItems
+                .map((item) => ScannedPassenger.fromJson(item))
+                .toList();
             final total = loaded.length;
             final valid = loaded.where((s) => s.result == 'VALID').length;
-            final issues = loaded.where((s) => s.result == 'ALREADY_USED' || s.result == 'EXPIRED').length;
+            final issues = loaded
+                .where(
+                  (s) => s.result == 'ALREADY_USED' || s.result == 'EXPIRED',
+                )
+                .length;
             activeTrip.value = active;
             scans.assignAll(loaded);
             totalScans.value = total;
             validScans.value = valid;
             issueScans.value = issues;
-            apiCallStatus.value = loaded.isEmpty ? ApiCallStatus.success : ApiCallStatus.success;
+            apiCallStatus.value = loaded.isEmpty
+                ? ApiCallStatus.success
+                : ApiCallStatus.success;
           },
           onFailure: (error, response) async {
             final err = await ErrorUtil.getErrorData(error.toString());
@@ -157,11 +169,15 @@ class ScannedPassenger {
     String formattedTime = '--:--';
     if (scannedAtStr != null) {
       try {
-        final dt = DateTime.parse(scannedAtStr).toLocal();
-        final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-        final min = dt.minute.toString().padLeft(2, '0');
-        final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-        formattedTime = '${hour.toString().padLeft(2, '0')}:$min $ampm';
+        final dt = DateTime.parse(scannedAtStr);
+        final etDT = toEthiopian(dt);
+        int etHour = etDT.hour >= 6 ? etDT.hour - 6 : etDT.hour + 6;
+        final displayHour = etHour == 0
+            ? 12
+            : (etHour > 12 ? etHour - 12 : etHour);
+        final min = etDT.minute.toString().padLeft(2, '0');
+        final ampm = etDT.hour >= 6 && etDT.hour < 18 ? 'Day' : 'Night';
+        formattedTime = '${displayHour.toString().padLeft(2, '0')}:$min $ampm';
       } catch (_) {}
     }
     return ScannedPassenger(
