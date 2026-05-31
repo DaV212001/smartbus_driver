@@ -46,7 +46,7 @@ class AuthController extends GetxController {
     final result = await Get.to(() => const BarcodeScannerWidget());
     if (result != null && result is String) {
       fidController.text = result;
-      Get.snackbar('Success', 'FID scanned successfully');
+      Get.snackbar('Success', 'Fayda ID scanned successfully');
     }
   }
 
@@ -69,10 +69,10 @@ class AuthController extends GetxController {
         Get.snackbar('Error', 'Invalid email address.');
         return;
       }
-    } else if (type == "FID") {
+    } else if (type == "Fayda ID") {
       identifier = fidController.text.trim();
       if (identifier.length != 16) {
-        Get.snackbar('Error', 'FID must be exactly 16 characters.');
+        Get.snackbar('Error', 'Fayda ID must be exactly 16 characters.');
         return;
       }
     }

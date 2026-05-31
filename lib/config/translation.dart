@@ -231,8 +231,8 @@ class AppTranslations extends Translations {
       'new_password': 'New Password',
       'reset_password': 'Reset Password',
       'phone': 'Phone',
-      'fid': 'FID',
-      'fid_hint': '16-character FID',
+      'fid': 'Fayda ID',
+      'fid_hint': '16-character Fayda ID',
 
       // Scan Screen
       'ticket_scanner': 'Ticket Scanner',

@@ -57,7 +57,7 @@ class LoginScreen extends GetView<AuthController> {
                       LucideIcons.mail,
                       'email'.tr,
                     ),
-                    _buildTypeToggle(context, 'FID', LucideIcons.qrCode, 'fid'.tr),
+                    _buildTypeToggle(context, 'Fayda ID', LucideIcons.qrCode, 'fid'.tr),
                   ],
                 ),
               ),
